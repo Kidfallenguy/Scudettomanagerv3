@@ -4017,7 +4017,7 @@ export const SOUTH_AMERICAN_YOUTH_PROSPECTS: Record<string, StarSeed[]> = {
   ar5_muniz: [{ name: "Tadeo Ojeda", pos: "LW", ovr: 42, age: 17, nat: "ARG", pot: 89 }],
 
   // Torneo Promocional Amateur
-  tpa_glew: [{ name: "Gustavo Curti", pos: "CB", ovr: 38, age: 19, nat: "ARG", pot: 96 }],
+  tpa_glew: [{ name: "Gustavo Curti", pos: "ST", ovr: 38, age: 19, nat: "ARG", pot: 96 }],
   // El Chasqui: GRL de Promocional Amateur y POT moderado para sus juveniles destacados.
   tpa_el_chasqui: [
     { name: "Ramiro Gómez", pos: "ST", ovr: 37, age: 17, nat: "ARG", pot: 82 },

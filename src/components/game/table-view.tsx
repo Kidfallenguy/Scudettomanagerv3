@@ -25,7 +25,7 @@ import {
 } from "@/lib/game/competitions";
 import { useGame } from "@/lib/game/store";
 import type { Competition, Fixture, LeagueKind, PlayableLeagueId } from "@/lib/game/types";
-import { competitionTopScorers } from "@/lib/game/selectors";
+import { competitionTopAssists, competitionTopScorers } from "@/lib/game/selectors";
 import { sortTable } from "@/lib/game/world";
 
 export function TableView() {
@@ -43,6 +43,7 @@ export function TableView() {
   const leagueTab = domesticCompetition(club.league);
   const [tab, setTab] = useState<Competition>(leagueTab);
   const topScorers = competitionTopScorers(fixtures, players, tab);
+  const topAssists = competitionTopAssists(fixtures, players, tab);
 
   const info = leagueInfo(club.league);
   // Solo las competiciones del país/región del club: UEFA (Champions, Europa, Conference) para ligas europeas.
@@ -259,7 +260,10 @@ export function TableView() {
           league={club.league}
         />
       ) : null}
-      <TopScorers rows={topScorers} competition={tab} clubId={clubId} league={club.league} />
+      <div className="grid gap-4 xl:grid-cols-2">
+        <TopScorers rows={topScorers} competition={tab} clubId={clubId} league={club.league} />
+        <TopAssists rows={topAssists} competition={tab} clubId={clubId} league={club.league} />
+      </div>
     </div>
   );
 }
@@ -310,6 +314,58 @@ function TopScorers({
       ) : (
         <p className="px-4 py-5 text-sm text-fg-muted">
           Aún no hay goles registrados para esta competición.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function TopAssists({
+  rows,
+  competition,
+  clubId,
+  league,
+}: {
+  rows: ReturnType<typeof competitionTopAssists>;
+  competition: Competition;
+  clubId: string;
+  league: LeagueKind;
+}) {
+  return (
+    <section className="overflow-hidden rounded-2xl bg-surface shadow-[var(--shadow-border)]">
+      <header className="border-b border-border px-4 py-3">
+        <h3 className="font-display text-xl font-semibold" style={{ color: COMP_THEME[competition].accent }}>
+          Máximos asistentes
+        </h3>
+        <p className="text-xs text-fg-muted">{compLabel(competition, league)} · temporada actual</p>
+      </header>
+      {rows.length ? (
+        <ol className="divide-y divide-border/60">
+          {rows.map(({ player, assists }, index) => {
+            const playerClub = clubById(player.clubId);
+            return (
+              <li
+                key={player.id}
+                className={cn("flex items-center gap-3 px-4 py-2.5", player.clubId === clubId && "bg-primary/10")}
+              >
+                <span className="w-5 text-center font-display text-lg tabular-nums text-fg-muted">
+                  {index + 1}
+                </span>
+                <ClubCrest club={playerClub} size={26} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{player.name}</p>
+                  <p className="truncate text-xs text-fg-muted">{playerClub.name}</p>
+                </div>
+                <p className="font-display text-xl font-semibold tabular-nums">
+                  {assists} <span className="text-xs font-normal text-fg-muted">asist.</span>
+                </p>
+              </li>
+            );
+          })}
+        </ol>
+      ) : (
+        <p className="px-4 py-5 text-sm text-fg-muted">
+          Aún no hay asistencias registradas para esta competición.
         </p>
       )}
     </section>

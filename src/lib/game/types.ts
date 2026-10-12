@@ -394,6 +394,8 @@ export interface Fixture {
   awayGoals?: number;
   /** IDs de quienes marcaron en este partido, para estadísticas por competición. */
   scorerIds?: string[];
+  /** IDs de quienes dieron una asistencia en este partido, para estadísticas por competición. */
+  assistIds?: string[];
   leg?: 1 | 2;
   tieId?: string;
   /** Se jugó prórroga (los goles de `homeGoals`/`awayGoals` ya la incluyen). */

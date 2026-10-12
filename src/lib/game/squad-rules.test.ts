@@ -119,6 +119,7 @@ test("las divisiones argentinas generan nombres normales y respetan las plantill
   const glewSquad = buildSquad("tpa_glew", new Rng(2026), new Set());
   const curti = glewSquad.find((player) => player.name === "Gustavo Curti");
   assert.ok(curti);
+  assert.equal(curti.pos, "ST");
   assert.equal(curti.age, 19);
   assert.equal(curti.pot, 96);
 

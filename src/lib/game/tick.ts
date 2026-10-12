@@ -85,6 +85,9 @@ function recordFixtureScorers(save: GameSave, fixture: Fixture, result: MatchRes
   const scorers = result.events.flatMap((event) =>
     event.type === "goal" && event.playerId ? [{ playerId: event.playerId, clubId: event.clubId }] : [],
   );
+  fixture.assistIds = result.events.flatMap((event) =>
+    event.type === "goal" && event.assistPlayerId ? [event.assistPlayerId] : [],
+  );
   const rng = new Rng(save.seed + save.cursor * 997 + fixture.round + fixtureHash(fixture.id));
   for (const clubId of [fixture.homeId, fixture.awayId]) {
     const goals = clubId === fixture.homeId ? result.homeGoals : result.awayGoals;
@@ -92,7 +95,8 @@ function recordFixtureScorers(save: GameSave, fixture: Fixture, result: MatchRes
     const squad = save.players.filter((player) => player.clubId === clubId && player.pos !== "GK");
     const candidates = squad.length ? squad : save.players.filter((player) => player.clubId === clubId);
     for (let count = attributed; count < goals && candidates.length; count += 1) {
-      scorers.push({ playerId: rng.pick(candidates).id, clubId });
+      const scorer = rng.pick(candidates);
+      if (scorer) scorers.push({ playerId: scorer.id, clubId });
     }
   }
   fixture.scorerIds = scorers.map((scorer) => scorer.playerId);
@@ -108,7 +112,7 @@ function outLabel(reason: string, detail: string): string {
 export function lineupProblems(save: GameSave): Player[] {
   return save.tactics.lineup
     .map((id) => save.players.find((p) => p.id === id))
-    .filter((p): p is Player => Boolean(p) && isUnavailable(p));
+    .filter((p): p is Player => p !== undefined && isUnavailable(p));
 }
 
 /** Jugadores del once que no pueden jugar, con el motivo (para el cartel y la alineación). */

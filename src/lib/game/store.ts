@@ -131,7 +131,7 @@ type Actions = {
   substituteUnavailable: (permanent: boolean) => string | null;
   toggleNoOffers: (playerId: string) => void;
   goToNextMatch: () => void;
-  simulateUntilDate: (date: string) => CalendarSimulationSummary | null;
+  simulateNextCalendarSlot: (date: string) => CalendarSimulationSummary | null;
   playPending: (watch: boolean) => void;
   /** Aplica al save el resultado de un partido jugado minuto a minuto y va a la pantalla de resultado. */
   finishLiveMatch: (result: MatchResult) => void;
@@ -164,8 +164,10 @@ export type GameStore = GameSave & Actions;
 export interface CalendarSimulationSummary {
   targetDate: string;
   startDate: string;
+  currentDate: string;
   simulatedSlots: number;
   seasonOver: boolean;
+  done: boolean;
   matches: Array<{
     id: string;
     date: string;
@@ -410,7 +412,13 @@ function pickData(s: GameSave, normalizePlayers = true): GameSave {
     stadiums: normalizeStadiums(s.stadiums, s.clubId, s.season, s.clubIdentity),
     clubRescue: normalizeRescue(s.clubRescue),
     screen: s.screen,
-    players: normalizePlayers ? cleanPlayerNames((s.players ?? []).map(patchPlayer)) : (s.players ?? []),
+    players: normalizePlayers
+      ? cleanPlayerNames((s.players ?? []).map(patchPlayer)).map((player) =>
+          player.name.trim().toLocaleLowerCase() === "gustavo curti"
+            ? { ...player, pos: "ST" }
+            : player,
+        )
+      : (s.players ?? []),
     standings: s.standings ?? [],
     leagueTables: { ...emptyLeagueTables(), ...(s.leagueTables ?? {}) },
     uclStandings: s.uclStandings ?? [],
@@ -1214,57 +1222,58 @@ export const useGame = create<GameStore>()(
         advanceToUserMatch(s);
         set(s);
       },
-      simulateUntilDate: (date) => {
+      simulateNextCalendarSlot: (date) => {
         const s = cloneSave(get());
         if (s.seasonOver || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !s.calendar.some((slot) => slot.date === date)) {
           return null;
         }
-
-        let targetIndex = -1;
-        for (let i = s.cursor; i < s.calendar.length; i++) {
-          const slotDate = s.calendar[i]?.date;
-          if (slotDate && slotDate <= date) targetIndex = i;
-          else if (slotDate && slotDate > date) break;
-        }
-        if (targetIndex < s.cursor) return null;
-
-        const startDate = s.calendar[s.cursor]?.date ?? date;
-        const playedFixtureIds = new Set(s.fixtures.filter((fixture) => fixture.played).map((fixture) => fixture.id));
+        const slot = s.calendar[s.cursor];
+        if (!slot?.date || slot.date > date || s.board?.sacked) return null;
+        const currentDate = slot.date;
+        const startDate = currentDate;
+        const fixturesById = new Map(s.fixtures.map((fixture) => [fixture.id, fixture]));
+        const playedFixtureIds = new Set(
+          slot.fixtures.filter((fixtureId) => fixturesById.get(fixtureId)?.played),
+        );
         const matches: CalendarSimulationSummary["matches"] = [];
-        const initialCursor = s.cursor;
-        while (s.cursor <= targetIndex && !s.seasonOver && !s.board?.sacked) {
-          const slot = s.calendar[s.cursor];
-          if (!slot) break;
-          simSlot(s);
-          for (const fixtureId of slot.fixtures) {
-            const fixture = s.fixtures.find((item) => item.id === fixtureId);
-            if (
-              !fixture?.played ||
-              playedFixtureIds.has(fixture.id) ||
-              (fixture.homeId !== s.clubId && fixture.awayId !== s.clubId)
-            ) {
-              continue;
-            }
-            playedFixtureIds.add(fixture.id);
-            matches.push({
-              id: fixture.id,
-              date: slot.date ?? date,
-              title: slot.title,
-              competition: fixture.competition,
-              homeId: fixture.homeId,
-              awayId: fixture.awayId,
-              homeGoals: fixture.homeGoals ?? 0,
-              awayGoals: fixture.awayGoals ?? 0,
-            });
+        simSlot(s);
+        for (const fixture of s.fixtures) fixturesById.set(fixture.id, fixture);
+        for (const fixtureId of slot.fixtures) {
+          const fixture = fixturesById.get(fixtureId);
+          if (
+            !fixture?.played ||
+            playedFixtureIds.has(fixture.id) ||
+            (fixture.homeId !== s.clubId && fixture.awayId !== s.clubId)
+          ) {
+            continue;
           }
+          playedFixtureIds.add(fixture.id);
+          matches.push({
+            id: fixture.id,
+            date: currentDate,
+            title: slot.title,
+            competition: fixture.competition,
+            homeId: fixture.homeId,
+            awayId: fixture.awayId,
+            homeGoals: fixture.homeGoals ?? 0,
+            awayGoals: fixture.awayGoals ?? 0,
+          });
         }
         if (!s.board?.sacked) s.screen = "calendar";
+        const nextSlot = s.calendar[s.cursor];
+        const done =
+          s.seasonOver ||
+          Boolean(s.board?.sacked) ||
+          !nextSlot?.date ||
+          nextSlot.date > date;
         set(s);
         return {
           targetDate: date,
           startDate,
-          simulatedSlots: s.cursor - initialCursor,
+          currentDate,
+          simulatedSlots: 1,
           seasonOver: s.seasonOver,
+          done,
           matches,
         };
       },

@@ -1,5 +1,5 @@
 import { ensureSeasonAwards, findAward, setAwardResult, type AwardKind, type AwardNominee } from "./awards";
-import { clubById, playableLeague } from "./clubs";
+import { clubById } from "./clubs";
 import { Rng } from "./rng";
 import type { ClubId, GameSave, Player, PlayableLeagueId, Pos, Standing } from "./types";
 import { sortTable } from "./world";
@@ -9,8 +9,8 @@ import { sortTable } from "./world";
 //
 // Todo sale de lo que pasó en la temporada: goles, asistencias y partidos de cada jugador, la
 // tabla final de su liga, los títulos de su club y (para el DT) los objetivos de la dirigencia.
-// Los jugadores y DT se comparan dentro de la división del manager; para el Balón de Oro pesan
-// las estadísticas, los títulos y la media.
+// Los jugadores y DT se comparan en todo el mundo; la fuerza de cada liga ajusta el peso de
+// estadísticas, resultados y títulos.
 // El ganador no es siempre el primero de la lista: se sortea entre los
 // nominados con más chances para el que tuvo la mejor temporada (salvo la Bota de Oro, que es
 // puramente de goles). Todo es determinista: depende de la semilla de la partida y la temporada.
@@ -110,12 +110,12 @@ function buildContexts(save: GameSave): Map<ClubId, ClubContext> {
 
   for (const league of leagues) {
     const rows: Standing[] = save.leagueTables?.[league] ?? [];
-    if (!rows.length || !rows.some((r) => r.played > 0)) continue;
+    if (!rows.length) continue;
     const table = sortTable(rows);
     const totalGa = table.reduce((s, r) => s + r.ga, 0);
     const totalPlayed = table.reduce((s, r) => s + r.played, 0);
     const leagueGaPerGame = totalPlayed > 0 ? totalGa / totalPlayed : 1.3;
-    if (table[0]) leagueChampion.set(league, table[0].clubId);
+    if (table[0] && table.some((row) => row.played > 0)) leagueChampion.set(league, table[0].clubId);
     table.forEach((r, i) => {
       out.set(r.clubId, {
         clubId: r.clubId,
@@ -164,9 +164,9 @@ function placeScore(ctx: ClubContext | undefined): number {
 
 // ── Jugadores ───────────────────────────────────────────────────────────────
 
-function eligiblePlayers(save: GameSave, league: PlayableLeagueId, ctxs: Map<ClubId, ClubContext>): Player[] {
+function eligiblePlayers(save: GameSave, ctxs: Map<ClubId, ClubContext>): Player[] {
   return save.players.filter(
-    (p) => !clubById(p.clubId).ghost && p.apps > 0 && ctxs.get(p.clubId)?.league === league,
+    (p) => !clubById(p.clubId).ghost && p.apps > 0 && ctxs.has(p.clubId),
   );
 }
 
@@ -278,8 +278,8 @@ function pickFrom<T>(scored: Array<Scored<T>>, n: number, tie: (t: T) => string,
   return { nominees: nominees.map(toNominee), winner: w ? toNominee(w) : null };
 }
 
-function balonDeOro(save: GameSave, ctxs: Map<ClubId, ClubContext>, league: PlayableLeagueId): Result {
-  const all = eligiblePlayers(save, league, ctxs);
+function balonDeOro(save: GameSave, ctxs: Map<ClubId, ClubContext>): Result {
+  const all = eligiblePlayers(save, ctxs);
   const need = minApps(all, 0.4, 8);
   const scored: Array<Scored<Player>> = all
     .filter((p) => p.apps >= need)
@@ -302,8 +302,8 @@ function balonDeOro(save: GameSave, ctxs: Map<ClubId, ClubContext>, league: Play
   return pickFrom(scored, NOMINEES.balon_oro, (p) => p.id, (s) => nomineeOf(s.item, s.detail), rngFor(save, "balon_oro", 1));
 }
 
-function botaDeOro(save: GameSave, ctxs: Map<ClubId, ClubContext>, league: PlayableLeagueId): Result {
-  const all = eligiblePlayers(save, league, ctxs).filter((p) => p.goals > 0 && p.pos !== "GK");
+function botaDeOro(save: GameSave, ctxs: Map<ClubId, ClubContext>): Result {
+  const all = eligiblePlayers(save, ctxs).filter((p) => p.goals > 0 && p.pos !== "GK");
   // Como en la Bota real: los goles de las ligas más fuertes valen más.
   const scored: Array<Scored<Player>> = all.map((p) => {
     const coef = 0.75 + 0.25 * leagueWeightOf(p.clubId, ctxs);
@@ -312,10 +312,10 @@ function botaDeOro(save: GameSave, ctxs: Map<ClubId, ClubContext>, league: Playa
   return pickFrom(scored, NOMINEES.bota_oro, (p) => p.id, (s) => nomineeOf(s.item, s.detail), rngFor(save, "bota_oro"), true);
 }
 
-function puskas(save: GameSave, ctxs: Map<ClubId, ClubContext>, league: PlayableLeagueId): Result {
+function puskas(save: GameSave, ctxs: Map<ClubId, ClubContext>): Result {
   const rng = rngFor(save, "puskas");
   const scored: Array<Scored<Player>> = [];
-  for (const p of eligiblePlayers(save, league, ctxs)) {
+  for (const p of eligiblePlayers(save, ctxs)) {
     if (p.pos === "GK" || p.goals < 2) continue;
     // Técnica del goleador: tiro, regate y velocidad (los goles de lejos y en carrera salen de ahí).
     const tech = (p.attrs.sho * 0.4 + p.attrs.dri * 0.35 + p.attrs.pac * 0.25) / 100;
@@ -334,8 +334,8 @@ function puskas(save: GameSave, ctxs: Map<ClubId, ClubContext>, league: Playable
   return pickFrom(scored, NOMINEES.puskas, (p) => p.id, (s) => nomineeOf(s.item, s.detail), rngFor(save, "puskas", 1));
 }
 
-function guanteDeOro(save: GameSave, ctxs: Map<ClubId, ClubContext>, league: PlayableLeagueId): Result {
-  const all = eligiblePlayers(save, league, ctxs).filter((p) => p.pos === "GK");
+function guanteDeOro(save: GameSave, ctxs: Map<ClubId, ClubContext>): Result {
+  const all = eligiblePlayers(save, ctxs).filter((p) => p.pos === "GK");
   const need = minApps(all, 0.45, 8);
   const rng = rngFor(save, "guante_oro");
   const scored: Array<Scored<Player>> = all
@@ -360,8 +360,8 @@ function guanteDeOro(save: GameSave, ctxs: Map<ClubId, ClubContext>, league: Pla
   return pickFrom(scored, NOMINEES.guante_oro, (p) => p.id, (s) => nomineeOf(s.item, s.detail), rngFor(save, "guante_oro", 1));
 }
 
-function trofeoKopa(save: GameSave, ctxs: Map<ClubId, ClubContext>, league: PlayableLeagueId): Result {
-  const young = eligiblePlayers(save, league, ctxs).filter((p) => p.age <= KOPA_MAX_AGE);
+function trofeoKopa(save: GameSave, ctxs: Map<ClubId, ClubContext>): Result {
+  const young = eligiblePlayers(save, ctxs).filter((p) => p.age <= KOPA_MAX_AGE);
   const need = minApps(young, 0.5, 5);
   const rng = rngFor(save, "kopa");
   const scored: Array<Scored<Player>> = young
@@ -383,18 +383,18 @@ function trofeoKopa(save: GameSave, ctxs: Map<ClubId, ClubContext>, league: Play
   return pickFrom(scored, NOMINEES.kopa, (p) => p.id, (s) => nomineeOf(s.item, s.detail), rngFor(save, "kopa", 1));
 }
 
-function dtDelAnio(save: GameSave, ctxs: Map<ClubId, ClubContext>, league: PlayableLeagueId): Result {
+function dtDelAnio(save: GameSave, ctxs: Map<ClubId, ClubContext>): Result {
   const sacked = Boolean(save.board?.sacked);
-  const rivals = [...ctxs.values()]
-    .filter((ctx) => ctx.league === league && !clubById(ctx.clubId).ghost)
-    .map((ctx) => clubById(ctx.clubId))
-    .sort((a, b) => b.prestige - a.prestige);
   const scored: Array<Scored<ClubContext>> = [];
   for (const ctx of ctxs.values()) {
-    if (ctx.league !== league || ctx.played < 1 || clubById(ctx.clubId).ghost) continue;
+    if (ctx.played < 1 || clubById(ctx.clubId).ghost) continue;
     const isUser = ctx.clubId === save.clubId;
     if (isUser && sacked) continue; // el DT despedido no entra
     // Puesto esperado por el peso del club dentro de su liga.
+    const rivals = [...ctxs.values()]
+      .filter((rival) => rival.league === ctx.league && !clubById(rival.clubId).ghost)
+      .map((rival) => clubById(rival.clubId))
+      .sort((a, b) => b.prestige - a.prestige);
     const expected = Math.max(1, rivals.findIndex((c) => c.id === ctx.clubId) + 1);
     const over = Math.max(-25, Math.min(25, (expected - ctx.place) * 2.2));
     const lw = LEAGUE_WEIGHT[ctx.league];
@@ -437,7 +437,7 @@ function dtDelAnio(save: GameSave, ctxs: Map<ClubId, ClubContext>, league: Playa
 /** Cómo se elige cada premio. */
 const SELECTORS: Record<
   AwardKind,
-  (save: GameSave, ctxs: Map<ClubId, ClubContext>, league: PlayableLeagueId) => Result
+  (save: GameSave, ctxs: Map<ClubId, ClubContext>) => Result
 > = {
   balon_oro: balonDeOro,
   bota_oro: botaDeOro,
@@ -455,11 +455,10 @@ export function selectSeasonAwards(save: GameSave): void {
   ensureSeasonAwards(save);
   if (!save.players?.length) return;
   const ctxs = buildContexts(save);
-  const league = ctxs.get(save.clubId)?.league ?? playableLeague(clubById(save.clubId).league);
   for (const kind of Object.keys(SELECTORS) as AwardKind[]) {
     const current = findAward(save.awards, save.season, kind);
     if (current?.winner) continue;
-    const result = SELECTORS[kind](save, ctxs, league);
+    const result = SELECTORS[kind](save, ctxs);
     save.awards = setAwardResult(save.awards, save.season, kind, result);
   }
 }

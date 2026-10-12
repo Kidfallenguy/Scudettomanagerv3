@@ -52,6 +52,11 @@ export interface CompetitionTopScorer {
   goals: number;
 }
 
+export interface CompetitionTopAssist {
+  player: GameSave["players"][number];
+  assists: number;
+}
+
 /** Goleadores de una competición a partir de los anotadores guardados en cada partido. */
 export function competitionTopScorers(
   fixtures: Fixture[],
@@ -73,6 +78,30 @@ export function competitionTopScorers(
       return player ? [{ player, goals }] : [];
     })
     .sort((a, b) => b.goals - a.goals || a.player.name.localeCompare(b.player.name))
+    .slice(0, limit);
+}
+
+/** Asistentes de una competición a partir de las asistencias guardadas en cada partido. */
+export function competitionTopAssists(
+  fixtures: Fixture[],
+  players: GameSave["players"],
+  competition: Fixture["competition"],
+  limit = 10,
+): CompetitionTopAssist[] {
+  const assistsByPlayer = new Map<string, number>();
+  for (const fixture of fixtures) {
+    if (!fixture.played || fixture.competition !== competition) continue;
+    for (const playerId of fixture.assistIds ?? []) {
+      assistsByPlayer.set(playerId, (assistsByPlayer.get(playerId) ?? 0) + 1);
+    }
+  }
+  const playersById = new Map(players.map((player) => [player.id, player]));
+  return [...assistsByPlayer]
+    .flatMap(([playerId, assists]) => {
+      const player = playersById.get(playerId);
+      return player ? [{ player, assists }] : [];
+    })
+    .sort((a, b) => b.assists - a.assists || a.player.name.localeCompare(b.player.name))
     .slice(0, limit);
 }
 

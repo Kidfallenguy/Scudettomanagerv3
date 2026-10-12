@@ -1,4 +1,4 @@
-import { FastForward, X } from "lucide-react";
+import { FastForward, Pause, Play, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { ClubCrest } from "@/components/game/crest";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ export function CalendarView() {
   const [view, setView] = useState<"year" | "tables">("year");
   const [day, setDay] = useState<string | null>(null);
   const [simulation, setSimulation] = useState<CalendarSimulationSummary | null>(null);
+  const [simulationRunning, setSimulationRunning] = useState(false);
   const [filter, setFilter] = useState<Competition | "all">("all");
   const [tableLeague, setTableLeague] = useState<PlayableLeagueId>(
     () => (clubById(clubId).league as PlayableLeagueId) ?? "serieA",
@@ -88,8 +89,38 @@ export function CalendarView() {
   const comps = useMemo(() => [...new Set(visibleCalendar.map((s) => s.competition))], [visibleCalendar]);
   const today = calendar[cursor]?.date ?? null;
   const selected = day ? (byDay.get(day) ?? []) : [];
-  const simulateUntilDate = useGame((s) => s.simulateUntilDate);
+  const simulateNextCalendarSlot = useGame((s) => s.simulateNextCalendarSlot);
   const canSimulateSelectedDate = !save.seasonOver && selected.some(({ index }) => index >= cursor);
+
+  useEffect(() => {
+    if (!simulationRunning || !simulation || simulation.done) return;
+    const timer = window.setTimeout(() => {
+      const step = simulateNextCalendarSlot(simulation.targetDate);
+      if (!step) {
+        setSimulation((current) =>
+          current
+            ? { ...current, done: true, seasonOver: useGame.getState().seasonOver }
+            : current,
+        );
+        setSimulationRunning(false);
+        return;
+      }
+      setSimulation((current) =>
+        current
+          ? {
+              ...current,
+              currentDate: step.currentDate,
+              simulatedSlots: current.simulatedSlots + step.simulatedSlots,
+              seasonOver: step.seasonOver,
+              done: step.done,
+              matches: [...current.matches, ...step.matches],
+            }
+          : current,
+      );
+      if (step.done) setSimulationRunning(false);
+    }, 50);
+    return () => window.clearTimeout(timer);
+  }, [simulationRunning, simulation, simulateNextCalendarSlot]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -172,13 +203,22 @@ export function CalendarView() {
               {canSimulateSelectedDate ? (
                 <div className="flex flex-col gap-2 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-xs text-fg-muted">
-                    Se jugarán todas las jornadas pendientes hasta esta fecha, respetando el calendario.
+                    Avanza jornada a jornada hasta esta fecha; podés pausar y continuar cuando quieras.
                   </p>
                   <Button
                     variant="club"
                     onClick={() => {
-                      const result = simulateUntilDate(day);
-                      if (result) setSimulation(result);
+                      const startDate = save.calendar[cursor]?.date ?? day;
+                      setSimulation({
+                        targetDate: day,
+                        startDate,
+                        currentDate: startDate,
+                        simulatedSlots: 0,
+                        seasonOver: false,
+                        done: false,
+                        matches: [],
+                      });
+                      setSimulationRunning(true);
                     }}
                   >
                     <FastForward className="size-4" />
@@ -195,7 +235,10 @@ export function CalendarView() {
           {simulation ? (
             <SimulationSummary
               summary={simulation}
+              running={simulationRunning}
+              onToggleRunning={() => setSimulationRunning((running) => !running)}
               onClose={() => {
+                setSimulationRunning(false);
                 setSimulation(null);
                 setDay(null);
                 if (simulation.seasonOver) {
@@ -252,9 +295,13 @@ export function CalendarView() {
 
 function SimulationSummary({
   summary,
+  running,
+  onToggleRunning,
   onClose,
 }: {
   summary: CalendarSimulationSummary;
+  running: boolean;
+  onToggleRunning: () => void;
   onClose: () => void;
 }) {
   const clubId = useGame((s) => s.clubId);
@@ -280,7 +327,11 @@ function SimulationSummary({
       <p className="text-sm text-fg-muted">
         Desde {prettyDate(summary.startDate)} · {summary.simulatedSlots}{" "}
         {summary.simulatedSlots === 1 ? "jornada simulada" : "jornadas simuladas"}
+        {summary.currentDate && summary.simulatedSlots > 0 ? ` · Última: ${prettyDate(summary.currentDate)}` : ""}
         {summary.seasonOver ? " · Temporada finalizada" : ""}
+        {!summary.done && !running ? " · En pausa" : ""}
+        {!summary.done && running ? " · Simulando..." : ""}
+        {summary.done && !summary.seasonOver ? " · Fecha alcanzada" : ""}
       </p>
       <div className="grid grid-cols-5 gap-2 text-center">
         {[
@@ -321,7 +372,13 @@ function SimulationSummary({
           No hubo partidos de tu equipo en las jornadas simuladas.
         </p>
       )}
-      <div className="flex justify-end border-t border-border pt-3">
+      <div className="flex justify-between gap-2 border-t border-border pt-3">
+        {!summary.done ? (
+          <Button variant={running ? "ghost" : "club"} onClick={onToggleRunning}>
+            {running ? <Pause className="size-4" /> : <Play className="size-4" />}
+            {running ? "Pausar" : "Continuar"}
+          </Button>
+        ) : <span />}
         <Button variant="club" onClick={onClose}>Cerrar resumen</Button>
       </div>
     </DayModal>
