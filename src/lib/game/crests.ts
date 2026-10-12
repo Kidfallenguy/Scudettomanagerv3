@@ -38,7 +38,6 @@ const PNG_IDS = new Set([
   "ath",
   "atl",
   "atu",
-  "aux",
   "avl",
   "b04",
   "b2_boc",
@@ -486,6 +485,7 @@ function preferredCrestPath(clubId: string): string {
 }
 
 const USER_SUPPLIED_CRESTS: Record<string, string> = {
+  aux: "/crests/auxerre.png",
   nl1_alm: "/crests/escudos%20nuevos/2da%20Division%20holandesa/almere-city-fc.28f26b3f.png",
   nl1_gra: "/crests/escudos%20nuevos/2da%20Division%20holandesa/de-graafschap.3c2375e6.png",
   nl1_db: "/crests/escudos%20nuevos/2da%20Division%20holandesa/fc-den-bosch.ccaa4af5.png",
