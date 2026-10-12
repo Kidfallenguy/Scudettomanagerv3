@@ -12,8 +12,6 @@
     "strict": true,
     "isolatedModules": true,
     "skipLibCheck": true,
-    // `src/lib/db.ts` imports scripts/migration-plan.mjs; checkJs types the
-    // implementation itself instead of a hand-written declaration beside it.
     "allowJs": true,
     "checkJs": false,
     "noEmit": true,
@@ -21,16 +19,18 @@
       "vite/client",
       "node"
     ],
-    "baseUrl": ".",
-    "paths": {
-      "@/*": [
-        "./src/*"
-      ]
-    },
+"paths": {
+  "@/*": [
+    "./src/*"
+  ]
+},
     "allowImportingTsExtensions": true
   },
   "include": [
-    "src",
-    "server"
+    "src"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
   ]
 }
