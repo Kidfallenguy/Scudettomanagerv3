@@ -2,10 +2,21 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { selectSeasonAwards } from "./award-selection";
 import { domesticIds } from "./clubs";
+import { normalizePotential } from "./potential";
 import { competitionTopAssists } from "./selectors";
 import { useGame } from "./store";
 import type { Fixture } from "./types";
 import { createCareer } from "./world";
+
+test("el potencial nunca supera 100 y repara el dato incorrecto de Mauro Schönfeld", () => {
+  const save = createCareer("arg_3_abr", 20261014);
+  const mauro = [...save.players, ...save.freeAgents].find((player) => player.name === "Mauro Schönfeld");
+  assert.ok(mauro);
+  assert.equal(mauro.pot, 73);
+  assert.ok([...save.players, ...save.freeAgents].every((player) => player.pot <= 100));
+  assert.equal(normalizePotential(66, 8573), 100);
+  assert.equal(normalizePotential(75, 60), 75);
+});
 
 test("el calendario avanza una jornada por llamada y registra asistentes por competición", () => {
   const save = createCareer("tpa_glew", 20261012);

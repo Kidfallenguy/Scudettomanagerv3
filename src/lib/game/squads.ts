@@ -1,4 +1,4 @@
-import { rollPotential } from "./potential";
+import { normalizePotential, rollPotential } from "./potential";
 import { CLUBS, clubById } from "./clubs";
 import { NL_LOWER_LEAGUES_STARS } from "./nl-lower-stars";
 import { MLS_USER_SQUADS } from "./mls-user-squads";
@@ -174,7 +174,7 @@ export function resyncStats(p: Player, rng: Rng) {
 
 function fromStar(clubId: string, seed: StarSeed, i: number, rng: Rng): Player {
   const club = clubById(clubId);
-  const seededPotential = seed.pot ?? rollPotential(seed.ovr, seed.age, rng);
+  const seededPotential = normalizePotential(seed.ovr, seed.pot ?? rollPotential(seed.ovr, seed.age, rng));
   const pot =
     club.league === "eredivisie" && seed.age < 22
       ? clamp(seededPotential, 85, 92)

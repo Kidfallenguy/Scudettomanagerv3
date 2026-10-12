@@ -3,6 +3,12 @@ import type { Rng } from "./rng";
 import { ovrFromOutfield, syncStats } from "./stats";
 import type { Attrs, Player, Pos } from "./types";
 
+/** Repairs malformed saved or seeded values while keeping potential at least as high as overall. */
+export function normalizePotential(ovr: number, potential: number): number {
+  const overall = clamp(Number.isFinite(ovr) ? ovr : 40, 40, 100);
+  return clamp(Number.isFinite(potential) ? potential : overall, overall, 100);
+}
+
 /** GRL de un jugador de campo a partir de sus atributos. */
 export function ovrFromAttrs(pos: Exclude<Pos, "GK">, attrs: Attrs): number {
   return ovrFromOutfield(pos, attrs);
@@ -13,7 +19,7 @@ export function ovrFromAttrs(pos: Exclude<Pos, "GK">, attrs: Attrs): number {
  * Soft cap 95. A few break it (96–99). 100 is once-in-a-generation.
  */
 export function rollPotential(ovr: number, age: number, rng: Rng, forced?: number): number {
-  if (forced !== undefined) return clamp(forced, ovr, 100);
+  if (forced !== undefined) return normalizePotential(ovr, forced);
   if (age >= 30) return ovr;
   let room: number;
   if (age <= 18) {
@@ -34,7 +40,7 @@ export function rollPotential(ovr: number, age: number, rng: Rng, forced?: numbe
   if (roll < 0.003) pot = 100;
   else if (roll < 0.014) pot = clamp(Math.max(pot, 96), ovr, 99);
   else pot = Math.min(95, pot);
-  return clamp(pot, ovr, 100);
+  return normalizePotential(ovr, pot);
 }
 
 export function isWonderkid(p: { age: number; pot: number; ovr: number }): boolean {

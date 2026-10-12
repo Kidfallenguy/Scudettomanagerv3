@@ -10,6 +10,7 @@ import { seedFreeAgents } from "./free-agents";
 import { CLUBS, UCL_GROUPS, applyClubIdentity, applyDivisions, clubById, emptyLeagueTables, isKnownClub, isSelectableClub, playableLeague, startingBudget } from "./clubs";
 import { POS_LABEL, capMarketValue, clamp, formatMoney, playerValue, uid } from "./format";
 import { historicalFor } from "./honours";
+import { normalizePotential } from "./potential";
 import { managerOffers, managerReport } from "./manager";
 import { Rng } from "./rng";
 import {
@@ -241,8 +242,19 @@ function patchEventFields(p: Player): Pick<Player, "absence" | "bond" | "valueMo
 
 function patchPlayer(p: Player): Player {
   const n = typeof p.number === "number" && p.number >= 1 ? p.number : fallbackNumber(p);
+  const ovr = clamp(Number.isFinite(p.ovr) ? p.ovr : 40, 40, 100);
+  const legacyPotential =
+    p.name.trim().toLocaleLowerCase() === "mauro schönfeld" && p.pot > 100 ? 73 : p.pot;
+  const pot = normalizePotential(ovr, legacyPotential);
   // Partidas viejas: el portero gana sus estadísticas y todos quedan acordes a su GRL.
-  const stats: Player = { ...p, attrs: { ...p.attrs }, gk: p.gk ? { ...p.gk } : undefined };
+  const stats: Player = {
+    ...p,
+    ovr,
+    pot,
+    value: playerValue(ovr, p.age, pot, p),
+    attrs: { ...p.attrs },
+    gk: p.gk ? { ...p.gk } : undefined,
+  };
   // Partidas viejas pueden traer jugadores sin posición válida (vacía, null, "LM"...): se repara al cargar.
   ensurePos(stats);
   resyncStats(stats, new Rng(idHash(p.id) + 91));

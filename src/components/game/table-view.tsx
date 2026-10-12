@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ClubCrest } from "@/components/game/crest";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
@@ -42,6 +42,9 @@ export function TableView() {
   const club = clubById(clubId);
   const leagueTab = domesticCompetition(club.league);
   const [tab, setTab] = useState<Competition>(leagueTab);
+  useEffect(() => {
+    setTab(leagueTab);
+  }, [leagueTab]);
   const topScorers = competitionTopScorers(fixtures, players, tab);
   const topAssists = competitionTopAssists(fixtures, players, tab);
 

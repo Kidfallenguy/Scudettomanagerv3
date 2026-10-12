@@ -2,7 +2,7 @@ import { clubById } from "./clubs";
 import { clamp, playerValue, playerWage } from "./format";
 import { makeName } from "./names";
 import { coercePos } from "./positions";
-import { rollPotential } from "./potential";
+import { normalizePotential, rollPotential } from "./potential";
 import type { Rng } from "./rng";
 import { statsFor } from "./squads";
 import type { Player, Pos, ScoutMission, YouthPlayer } from "./types";
@@ -265,7 +265,7 @@ export function makeYouth(
     level * 2 +
     (tier === 3 ? rng.int(8, 16) : tier === 2 ? rng.int(4, 10) : rng.int(-2, 6));
   const ovr = forced?.ovr ?? clamp(base, 52, 76);
-  let pot = forced?.pot ?? rollPotential(ovr, age, rng);
+  let pot = normalizePotential(ovr, forced?.pot ?? rollPotential(ovr, age, rng));
   if (tier === 3 && rng.chance(0.28)) pot = clamp(Math.max(pot, rng.int(88, 95)), ovr, 99);
   if (tier === 2 && rng.chance(0.12)) pot = clamp(Math.max(pot, rng.int(84, 92)), ovr, 96);
   if (rng.chance(0.012)) pot = clamp(Math.max(pot, 96), ovr, 100);

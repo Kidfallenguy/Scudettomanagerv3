@@ -1,5 +1,6 @@
 import { CLUBS } from "./clubs";
 import { playerValue, playerWage } from "./format";
+import { normalizePotential } from "./potential";
 import { Rng } from "./rng";
 import { assignShirtNumbers, generated, resyncStats } from "./squads";
 import type { Player, Pos } from "./types";
@@ -83,9 +84,9 @@ export function addNewGen11(players: Player[], rng: Rng, usedNames: Set<string>)
     player.ovr = seed.ovr;
     player.age = seed.age;
     player.nat = seed.nat;
-    player.pot = seed.pot;
+    player.pot = normalizePotential(seed.ovr, seed.pot);
     player.seasonStartOvr = seed.ovr;
-    player.value = playerValue(seed.ovr, seed.age, seed.pot);
+    player.value = playerValue(player.ovr, player.age, player.pot);
     player.wage = playerWage(seed.ovr, club.prestige);
     resyncStats(player, rng);
     usedNames.add(seed.name);

@@ -3199,7 +3199,7 @@ export const STARS: Record<string, StarSeed[]> = {
     { name: "Brian Mansilla", pos: "LW", ovr: 67, age: 26, nat: "ARG", pot: 70 },
     { name: "Emiliano Franco", pos: "CM", ovr: 67, age: 28, nat: "ARG", pot: 69 },
     { name: "Luciano Giménez", pos: "ST", ovr: 68, age: 26, nat: "ARG", pot: 71 },
-    { name: "Mauro Schönfeld", pos: "ST", ovr: 66, age: 23, nat: "ARG", pot: 8573 },
+    { name: "Mauro Schönfeld", pos: "ST", ovr: 66, age: 23, nat: "ARG", pot: 73 },
     { name: "Mariano Bracamonte", pos: "RW", ovr: 66, age: 22, nat: "ARG", pot: 73 },
     { name: "Patricio Romero", pos: "LB", ovr: 67, age: 27, nat: "ARG", pot: 69 },
     { name: "Gerónimo Ulibarri", pos: "RB", ovr: 66, age: 24, nat: "ARG", pot: 71 },
