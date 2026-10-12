@@ -11,7 +11,7 @@ import { clubById } from "@/lib/game/clubs";
 import { GROUP_LABEL, NAT_LABEL, POS_LABEL, formatMoney, formatWage, ovrClass, posGroup } from "@/lib/game/format";
 import type { Player, PosGroup } from "@/lib/game/types";
 import { useGame } from "@/lib/game/store";
-import { squadCount } from "@/lib/game/squad-rules";
+import { freeAgentSaleBlockReason, squadCount } from "@/lib/game/squad-rules";
 import { loanRecallCost } from "@/lib/game/transfers";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
@@ -228,6 +228,7 @@ function PlayerSheet({
     getStat(player, k),
   ]);
   const guest = Boolean(player.loanFrom);
+  const saleLock = freeAgentSaleBlockReason(player, season);
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:items-center"
@@ -387,7 +388,7 @@ function PlayerSheet({
             <Button variant={isExpiring(player) ? "club" : "outline"} onClick={onRenew}>
               Renovar contrato
             </Button>
-            <Button variant="outline" onClick={onList}>
+            <Button variant="outline" disabled={Boolean(saleLock)} onClick={onList}>
               {player.listed ? "Quitar del mercado" : "Poner en venta"}
             </Button>
             <Button variant="outline" onClick={onLoan}>
@@ -396,7 +397,7 @@ function PlayerSheet({
             <Button variant={player.noOffers ? "club" : "outline"} onClick={onBlockOffers}>
               {player.noOffers ? "Permitir ofertas" : "Bloquear ofertas"}
             </Button>
-            <Button variant="outline" onClick={onSell}>
+            <Button variant="outline" disabled={Boolean(saleLock)} onClick={onSell}>
               Vender ahora
             </Button>
             <Button variant="outline" onClick={onTrain}>
@@ -422,6 +423,7 @@ function PlayerSheet({
         ) : (
           <p className="text-xs text-fg-muted">Cedido: no se vende hasta que vuelva o expire el préstamo.</p>
         )}
+        {saleLock ? <p className="w-full text-xs text-fg-muted">{saleLock}</p> : null}
         <Button variant="ghost" onClick={onClose}>
           Cerrar
         </Button>

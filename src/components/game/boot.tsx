@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { GlobalCareerHistory } from "@/components/game/global-career-history";
 import { isKnownClub } from "@/lib/game/clubs";
 import { useGame } from "@/lib/game/store";
 import { LanguageSelect } from "@/lib/i18n";
 
 export function Boot() {
+  const [showLegacy, setShowLegacy] = useState(false);
   const clubId = useGame((s) => s.clubId);
   const setScreen = useGame((s) => s.setScreen);
   const openSlots = useGame((s) => s.openSlots);
@@ -25,6 +28,10 @@ export function Boot() {
         </div>
         <div className="flex flex-col gap-2">
           <LanguageSelect className="mb-2" />
+          <Button variant="ghost" size="lg" onClick={() => setShowLegacy((open) => !open)}>
+            {showLegacy ? "Ocultar legado global" : "Ver legado global"}
+          </Button>
+          {showLegacy ? <GlobalCareerHistory /> : null}
           {hasCareer ? (
             <Button variant="club" size="lg" onClick={() => setScreen("office")}>
               Continuar carrera

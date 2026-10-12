@@ -2,9 +2,9 @@ import { ensureSeasonAwards } from "./awards";
 import { nextBoard } from "./board";
 import { ensureTerms } from "./contracts";
 import { enforceSquadCaps, makeExpirySeller } from "./ai-market";
-import { rolloverFinance } from "./finance";
+import { rolloverFinance, seasonBudgetGrant } from "./finance";
 import { processExpiries, trimFreeAgents } from "./free-agents";
-import { CLUBS, clubById, domesticIds, emptyLeagueTables, emptyStanding, playableLeague } from "./clubs";
+import { CLUBS, applyDivisions, clubById, domesticIds, emptyLeagueTables, emptyStanding, playableLeague } from "./clubs";
 import { applyPromotionRelegation } from "./divisions";
 import { isCalendarYearLeague, isEnglishLeague, isPortugueseLeague } from "./competitions";
 import { buildSquad } from "./squads";
@@ -19,13 +19,7 @@ import { pickBench, pickXi } from "./tactics";
 import { OFFSEASON_DAYS, advanceTraining, trainingPopup } from "./training";
 import { resolveLoans, spawnWonderkids } from "./transfers";
 import { clamp, playerValue, playerWage, uid } from "./format";
-import {
-  assembleContinentals,
-  buildSeasonSchedule,
-  prizeForPlace,
-  rankedByPrestige,
-  sortTable,
-} from "./world";
+import { assembleContinentals, buildSeasonSchedule, prizeForPlace, rankedByPrestige, sortTable } from "./world";
 import { assembleMundial, intercontinentalPair, isMundialSeason, transatlanticaPair } from "./mundial";
 import type { GameSave, Player } from "./types";
 
@@ -86,6 +80,9 @@ function makeRegen(retired: Player, rng: Rng, used: Set<string>): Player {
 }
 
 export function evolveSeason(prev: GameSave): GameSave {
+  // Cada slot conserva su propio mapa, mientras que `CLUBS` es global en memoria.
+  // Reaplicar el mapa del save evita calcular el cierre con la división de otra carrera.
+  applyDivisions(prev.divisions);
   const rng = new Rng(prev.seed + prev.season * 97 + 13);
   const prevLeague = clubById(prev.clubId).league;
   const prevUserLeague = playableLeague(prevLeague);
@@ -95,12 +92,7 @@ export function evolveSeason(prev: GameSave): GameSave {
 
   // El verano también cuenta para un ciclo de entrenamiento en marcha: si termina, se aplica
   // antes de que los jugadores envejezcan.
-  const trainingEndedInSummer = advanceTraining(
-    prev,
-    OFFSEASON_DAYS,
-    new Rng(prev.seed + prev.season * 41 + 5),
-    false,
-  );
+  const trainingEndedInSummer = advanceTraining(prev, OFFSEASON_DAYS, new Rng(prev.seed + prev.season * 41 + 5), false);
 
   const used = usedNames(prev.players);
   const nextPlayers: Player[] = [];
@@ -123,7 +115,10 @@ export function evolveSeason(prev: GameSave): GameSave {
   const next: GameSave = {
     ...prev,
     players: nextPlayers,
-    news: prev.news.map((item) => ({ ...item, season: item.season ?? prev.season })),
+    news: prev.news.map((item) => ({
+      ...item,
+      season: item.season ?? prev.season,
+    })),
   };
 
   if (retired.some((p) => p.clubId === prev.clubId || p.loanFrom === prev.clubId)) {
@@ -155,6 +150,7 @@ export function evolveSeason(prev: GameSave): GameSave {
   const budgetBeforeMoves = next.budget;
   const popupsBeforeMoves = next.popups.length;
   const divisionMoves = applyPromotionRelegation(next, prev, new Rng(prev.seed + prev.season * 131 + 7));
+  applyDivisions(next.divisions);
   const divisionBudgetDelta = next.budget - budgetBeforeMoves;
   // Reconocimiento de fin de temporada de LaLiga Hypermotion: el campeón de la categoría (su premio real es el ascenso).
   {
@@ -343,15 +339,15 @@ export function evolveSeason(prev: GameSave): GameSave {
   const mundial = !isMundialSeason(prev.season + 1)
     ? { teams: [] as string[], groups: [] as string[][] }
     : assembleMundial({
-    rng: new Rng(prev.seed + prev.season * 17 + 9091),
-    uclTeams: prev.uclGroups?.flat() ?? assembled.uclGroups.flat(),
-    uelTeams: prev.uelTeams ?? assembled.uelTeams,
-    ueclTeams: prev.ueclTeams ?? assembled.ueclTeams,
-    libTeams: prev.libGroups?.flat() ?? assembled.libGroups.flat(),
-    sudTeams: prev.sudTeams ?? assembled.sudTeams,
-    lastChampions: prev.lastChampions,
-    save: prev,
-  });
+        rng: new Rng(prev.seed + prev.season * 17 + 9091),
+        uclTeams: prev.uclGroups?.flat() ?? assembled.uclGroups.flat(),
+        uelTeams: prev.uelTeams ?? assembled.uelTeams,
+        ueclTeams: prev.ueclTeams ?? assembled.ueclTeams,
+        libTeams: prev.libGroups?.flat() ?? assembled.libGroups.flat(),
+        sudTeams: prev.sudTeams ?? assembled.sudTeams,
+        lastChampions: prev.lastChampions,
+        save: prev,
+      });
   mundialGroups = mundial.groups;
 
   const intercontinental = intercontinentalPair(prev.lastChampions, {
@@ -381,14 +377,12 @@ export function evolveSeason(prev: GameSave): GameSave {
     mundialGroups,
     intercontinental,
     transatlantica,
-    saudiSuperCupFour: saudiSuperCupTeams(
-      prev.season + 1,
-      prev.leagueTables.saudiProLeague ?? [],
-      prev.lastChampions,
-    ),
+    saudiSuperCupFour: saudiSuperCupTeams(prev.season + 1, prev.leagueTables.saudiProLeague ?? [], prev.lastChampions),
     saudiKingsCupEntrants: SAUDI_KINGS_CUP_CONFIG.entrants,
     saudiKingsCupWeeks: SAUDI_KINGS_CUP_CONFIG.roundWeeks,
-    brazilianCupQualifiers: sortTable(prev.leagueTables?.brasileiraoC ?? []).slice(0, 4).map((row) => row.clubId),
+    brazilianCupQualifiers: sortTable(prev.leagueTables?.brasileiraoC ?? [])
+      .slice(0, 4)
+      .map((row) => row.clubId),
   });
 
   const squad = next.players.filter((p) => p.clubId === prev.clubId);
@@ -414,33 +408,7 @@ export function evolveSeason(prev: GameSave): GameSave {
     lineup: nextLineup,
     bench: pickBench(squad, nextLineup),
   };
-  next.budget = prev.budget + divisionBudgetDelta + leaguePrize + (prevLeague === "championship" || prevLeague === "segunda" || prevLeague === "primeraNacional" || prevLeague === "primeraBMetro"
-      ? 2_500_000
-      : prevLeague === "argentinaCuarta"
-        ? 300_000
-        : prevLeague === "argentinaQuinta"
-          ? 100_000
-          : prevLeague === "promocionalAmateur"
-            ? 60_000
-      : prevLeague === "leagueOne"
-        ? 1_500_000
-        : prevLeague === "leagueTwo"
-          ? 800_000
-      : prevLeague === "brasileiraoC"
-        ? 1_200_000
-      : prevLeague === "serieB" || prevLeague === "brasileiraoB"
-        ? 2_000_000
-        : prevLeague === "bundesliga2" || prevLeague === "ligue2"
-          ? 2_200_000
-          : prevLeague === "bundesliga3"
-            ? 1_200_000
-            : prevLeague === "ligue3"
-              ? 600_000
-          : prevLeague === "primeira2"
-            ? 1_200_000
-            : prevLeague === "primeraFed1" || prevLeague === "primeraFed2"
-              ? 600_000
-              : 6_000_000);
+  next.budget = prev.budget + divisionBudgetDelta + leaguePrize + seasonBudgetGrant(prevLeague);
   next.season = prev.season + 1;
   // Premios de la nueva temporada (vacíos); los de temporadas anteriores se conservan.
   ensureSeasonAwards(next);
@@ -485,20 +453,7 @@ export function evolveSeason(prev: GameSave): GameSave {
   const libPlace = assembled.libGroups.flat().includes(prev.clubId);
   const sudPlace = assembled.sudTeams.includes(prev.clubId);
   const mundialPlace = mundialGroups.flat().includes(prev.clubId);
-  const cupLine =
-    isCalendarYearLeague(league)
-      ? libPlace
-        ? "Clasificado a Libertadores."
-        : sudPlace
-          ? "Clasificado a Sudamericana."
-          : "Sin copa continental: hay que entrar por la tabla o por la copa nacional."
-      : uclPlace
-        ? "Clasificado a Champions por la tabla."
-        : uelPlace
-          ? "Clasificado a Europa League por la tabla."
-          : ueclPlace
-            ? "Clasificado a Conference por la tabla."
-            : "Sin copa europea: hay que entrar por la tabla.";
+  const cupLine = isCalendarYearLeague(league) ? (libPlace ? "Clasificado a Libertadores." : sudPlace ? "Clasificado a Sudamericana." : "Sin copa continental: hay que entrar por la tabla o por la copa nacional.") : uclPlace ? "Clasificado a Champions por la tabla." : uelPlace ? "Clasificado a Europa League por la tabla." : ueclPlace ? "Clasificado a Conference por la tabla." : "Sin copa europea: hay que entrar por la tabla.";
 
   // Patrocinadores: bonus por clasificar, una temporada menos de contrato y pago del año nuevo.
   const qualified: QualificationComp[] = [];

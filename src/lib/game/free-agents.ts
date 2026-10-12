@@ -91,6 +91,7 @@ export function signFreeAgent(save: GameSave, p: Player, clubId: ClubId, terms?:
   p.listed = false;
   p.listedForLoan = false;
   p.sellOn = null;
+  p.freeAgentSignedSeason = save.season;
   p.morale = clamp(p.morale + 8, 40, 100);
   applyTerms(p, terms ?? aiTerms(save, p, clubId, true, false));
   freeNumber(p, squadOf(save, clubId));
@@ -107,6 +108,7 @@ export function releaseToFree(save: GameSave, p: Player) {
   p.listed = false;
   p.listedForLoan = false;
   p.sellOn = null;
+  p.freeAgentSignedSeason = undefined;
   p.contract = 0;
   p.terms = undefined;
   save.freeAgents.push(p);

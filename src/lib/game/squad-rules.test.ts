@@ -43,7 +43,13 @@ function setup(own: number, loaned: number, seed = 3): GameSave {
     d.clubId = s.clubId;
     d.loanFrom = LENDER;
     d.loanSeasons = 1;
-    s.loans.push({ playerId: d.id, fromClubId: LENDER, toClubId: s.clubId, seasonsLeft: 1, fee: 0 });
+    s.loans.push({
+      playerId: d.id,
+      fromClubId: LENDER,
+      toClubId: s.clubId,
+      seasonsLeft: 1,
+      fee: 0,
+    });
   }
   return s;
 }
@@ -84,14 +90,20 @@ test("las plantillas de Serie D incluyen los 15 jugadores y promesas juveniles a
     assert.equal(seeds.length, 15, `${clubId} debe tener 15 jugadores cargados`);
     const squad = buildSquad(clubId, new Rng(20261010), new Set());
     for (const seed of seeds) {
-      assert.ok(squad.some((player) => player.name === seed.name), `${seed.name} debe estar en ${clubId}`);
+      assert.ok(
+        squad.some((player) => player.name === seed.name),
+        `${seed.name} debe estar en ${clubId}`,
+      );
     }
   }
 
   for (const [clubId, seeds] of Object.entries(SERIE_D_YOUTH_PROSPECTS)) {
     const squad = buildSquad(clubId, new Rng(20261010), new Set());
     for (const seed of seeds) {
-      assert.ok(squad.some((player) => player.name === seed.name), `${seed.name} debe estar en ${clubId}`);
+      assert.ok(
+        squad.some((player) => player.name === seed.name),
+        `${seed.name} debe estar en ${clubId}`,
+      );
       assert.ok(seed.age <= 18 && (seed.pot ?? 0) >= 86, `${seed.name} debe cumplir perfil de promesa`);
     }
   }
@@ -200,7 +212,13 @@ test("venta rápida de un propio que está prestado en otro club: rechazada", ()
   lent.clubId = LENDER;
   lent.loanFrom = USER;
   lent.loanSeasons = 1;
-  s.loans.push({ playerId: lent.id, fromClubId: USER, toClubId: LENDER, seasonsLeft: 1, fee: 0 });
+  s.loans.push({
+    playerId: lent.id,
+    fromClubId: USER,
+    toClubId: LENDER,
+    seasonsLeft: 1,
+    fee: 0,
+  });
   load(s);
   const err = state().sellPlayer(lent.id);
   assert.match(err ?? "", /cedido/i);
@@ -213,7 +231,17 @@ test("aceptar una oferta de compra o de cesión por un cedido: rechazada y la of
   const guest = loanedInOf(s)[0]!;
   for (const kind of ["buy", "loan"] as const) {
     s.offers = [
-      { id: `o-${kind}`, kind, playerId: guest.id, fromClubId: "juv", toClubId: USER, fee: 9_000_000, loanSeasons: kind === "loan" ? 1 : 0, week: s.week, unsolicited: true },
+      {
+        id: `o-${kind}`,
+        kind,
+        playerId: guest.id,
+        fromClubId: "juv",
+        toClubId: USER,
+        fee: 9_000_000,
+        loanSeasons: kind === "loan" ? 1 : 0,
+        week: s.week,
+        unsolicited: true,
+      },
     ];
     const err = acceptOffer(s, `o-${kind}`);
     assert.ok(err, `${kind}: debe rechazarse`);
@@ -244,7 +272,19 @@ test("el mercado semanal nunca genera ofertas por cedidos, aunque estén listado
 test("las ofertas viejas por cedidos se limpian solas", () => {
   const s = setup(22, 2);
   const guest = loanedInOf(s)[0]!;
-  s.offers = [{ id: "stale", kind: "buy", playerId: guest.id, fromClubId: "juv", toClubId: USER, fee: 5_000_000, loanSeasons: 0, week: 1, unsolicited: true }];
+  s.offers = [
+    {
+      id: "stale",
+      kind: "buy",
+      playerId: guest.id,
+      fromClubId: "juv",
+      toClubId: USER,
+      fee: 5_000_000,
+      loanSeasons: 0,
+      week: 1,
+      unsolicited: true,
+    },
+  ];
   processMarketWeek(s, new Rng(5));
   assert.ok(!s.offers.some((o) => o.id === "stale"));
 });
@@ -302,7 +342,10 @@ test("38 propios + 2 cedidos = 40: no se puede fichar ni subir un juvenil (los c
   const fa = s.freeAgents[0]!;
   const err = completeSigning(s, fa.id, blankTerms(fa), false);
   assert.match(err ?? "", /llena/i);
-  assert.ok(s.freeAgents.some((x) => x.id === fa.id), "el libre no fue fichado");
+  assert.ok(
+    s.freeAgents.some((x) => x.id === fa.id),
+    "el libre no fue fichado",
+  );
 
   load(s);
   const y = makeYouth(new Rng(1), "ITA", new Set(), USER, 1);
@@ -349,13 +392,25 @@ test("6. juvenil: makeYouth / resolveScouts / youthToPlayer siempre con posició
     assert.ok(isValidPos(y.pos), `makeYouth(${String(bad)}) → ${y.pos}`);
   }
   for (const bad of [...BAD, "ANY"]) {
-    const mission: ScoutMission = { id: "sc", countryId: "arg", countryName: "Argentina", nat: "ARG", weeksLeft: 1, cost: 1, preferredPos: bad as never, tier: 2 };
+    const mission: ScoutMission = {
+      id: "sc",
+      countryId: "arg",
+      countryName: "Argentina",
+      nat: "ARG",
+      weeksLeft: 1,
+      cost: 1,
+      preferredPos: bad as never,
+      tier: 2,
+    };
     const { found } = resolveScouts([mission], [], 1, USER, rng, new Set());
     assert.ok(found.length > 0);
     for (const y of found) assert.ok(isValidPos(y.pos), `scout(${String(bad)}) → ${y.pos}`);
   }
   for (const bad of BAD) {
-    const y = { ...makeYouth(rng, "ITA", new Set(), USER, 1), pos: bad } as unknown as YouthPlayer;
+    const y = {
+      ...makeYouth(rng, "ITA", new Set(), USER, 1),
+      pos: bad,
+    } as unknown as YouthPlayer;
     const p = youthToPlayer(y, USER, rng);
     assert.ok(isValidPos(p.pos), `youthToPlayer(${String(bad)}) → ${p.pos}`);
   }
@@ -363,7 +418,10 @@ test("6. juvenil: makeYouth / resolveScouts / youthToPlayer siempre con posició
 
 test("6b. subir un juvenil guardado sin posición (partida vieja) deja un jugador con posición", () => {
   load(setup(20, 0));
-  const y = { ...makeYouth(new Rng(2), "ITA", new Set(), USER, 1), pos: undefined } as unknown as YouthPlayer;
+  const y = {
+    ...makeYouth(new Rng(2), "ITA", new Set(), USER, 1),
+    pos: undefined,
+  } as unknown as YouthPlayer;
   useGame.setState({ academy: [y] } as never);
   assert.equal(state().signYouth(y.id), null);
   const signed = state().players.find((p) => p.id === `p-${y.id}`)!;
@@ -446,4 +504,15 @@ test("ownershipBlockReason distingue propio, cedido que llegó y cedido prestado
   assert.match(ownershipBlockReason(guest, USER)!, /propietario/);
   assert.match(ownershipBlockReason(lent, USER)!, /cedido/);
   assert.equal(saleBlockReason(s, own as Player), null);
+});
+
+test("un agente libre fichado no se puede vender hasta la próxima temporada", () => {
+  const s = setup(SQUAD_MIN + 1, 0);
+  const freeAgent = s.freeAgents[0]!;
+  assert.equal(completeSigning(s, freeAgent.id, blankTerms(freeAgent), false), null);
+  const own = s.players.find((player) => player.id === freeAgent.id)!;
+
+  assert.equal(own.freeAgentSignedSeason, s.season);
+  assert.match(saleBlockReason(s, own)!, /próxima temporada/);
+  assert.equal(saleBlockReason({ ...s, season: s.season + 1 }, own), null);
 });

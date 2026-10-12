@@ -13,17 +13,11 @@ import { historicalFor } from "./honours";
 import { normalizePotential } from "./potential";
 import { managerOffers, managerReport } from "./manager";
 import { Rng } from "./rng";
-import {
-  acceptSponsorOffer,
-  normalizeClubSponsors,
-  normalizeSponsorHistory,
-  normalizeSponsorLock,
-  normalizeSponsorOffers,
-  searchSponsors,
-} from "./sponsors";
+import { acceptSponsorOffer, normalizeClubSponsors, normalizeSponsorHistory, normalizeSponsorLock, normalizeSponsorOffers, searchSponsors } from "./sponsors";
 import { hasCeremony } from "./award-ceremony";
 import { ensureSeasonAwards, normalizeAwards } from "./awards";
 import { archiveSeason, normalizeCareerHistory } from "./career";
+import { EMPTY_GLOBAL_CAREER_HISTORY, normalizeGlobalCareerHistory, recordGlobalCareerSeasons, recordGlobalMatches, recordGlobalSeasonAwards, type GlobalCareerHistory } from "./global-history";
 import { createClubRescue, settleClubRescue } from "./club-rescue";
 import { buyStadiumUpgrade, closeStadiumSeason, createStadiumState, defaultFacilitiesLevel, normalizeStadiums, stadiumFor, type StadiumUpgradeId } from "./stadium";
 import { evolveSeason } from "./season";
@@ -32,54 +26,14 @@ import { startTrainingPlan, tierInfo, validateTrainingStart } from "./training";
 import { BENCH_SIZE, FORMATIONS, canPlaySlot, dropFromLineup, isUnavailable, pickBench, pickXi, placeNewcomer, sanitizeBench, unavailableDetail, unavailableGames } from "./tactics";
 import { cleanNameNumber, hasNameNumber, isGenericPlayerName, makeName } from "./names";
 import { ensurePos, normalizePos } from "./positions";
-import { SQUAD_FULL_MSG, hasSquadRoom, isOwnedAtClub, ownershipBlockReason, saleBlockReason, squadTotal } from "./squad-rules";
+import { SQUAD_FULL_MSG, freeAgentSaleBlockReason, hasSquadRoom, isOwnedAtClub, ownershipBlockReason, saleBlockReason, squadTotal } from "./squad-rules";
 import { createEventState, normalizeEventState, resolveEventDecision } from "./events";
-import {
-  applyPressAnswer,
-  createPressConference,
-  normalizePressConference,
-  normalizePressFrequency,
-  normalizePressHistory,
-  normalizePressPromises,
-} from "./press";
-import {
-  appendPlayerChatNote,
-  markPlayerChatRead,
-  normalizeIdolatryHistory,
-  normalizePlayerChats,
-  normalizePlayerPromises,
-  resolvePlayerChat,
-} from "./player-relations";
+import { applyPressAnswer, createPressConference, normalizePressConference, normalizePressFrequency, normalizePressHistory, normalizePressPromises } from "./press";
+import { appendPlayerChatNote, markPlayerChatRead, normalizeIdolatryHistory, normalizePlayerChats, normalizePlayerPromises, resolvePlayerChat } from "./player-relations";
 import { advanceToUserMatch, lineupProblems, sanitizeMissingLineup, sanitizeUserLineup, simSlot } from "./tick";
 import { normalizeNews } from "./news";
-import {
-  acceptOffer,
-  completeRenewal,
-  completeSigning,
-  loanFee,
-  marketPool,
-  recallLoanedPlayer,
-  rejectOffer,
-  settleSellOn,
-} from "./transfers";
-import type {
-  ClubId,
-  ClubCustomization,
-  Competition,
-  ContractTerms,
-  FormationId,
-  GameSave,
-  MatchResult,
-  Mentality,
-  NewsItem,
-  NumberColor,
-  Player,
-  Pos,
-  Screen,
-  TrainingPlan,
-  TrainingReport,
-  TrainingTier,
-} from "./types";
+import { acceptOffer, completeRenewal, completeSigning, loanFee, marketPool, recallLoanedPlayer, rejectOffer, settleSellOn } from "./transfers";
+import type { ClubId, ClubCustomization, Competition, ContractTerms, FormationId, GameSave, MatchResult, Mentality, NewsItem, NumberColor, Player, Pos, Screen, TrainingPlan, TrainingReport, TrainingTier } from "./types";
 import { createCareer, migrateUclToLeaguePhase, migrateUeclToLeaguePhase, migrateUelToLeaguePhase, wageBill } from "./world";
 
 const SAVE_VERSION = 9;
@@ -94,6 +48,7 @@ type Actions = {
   hydrated: boolean;
   slots: Array<GameSave | null>;
   customClubs: ClubCustomization[];
+  globalCareerHistory: GlobalCareerHistory;
   setHydrated: (v: boolean) => void;
   setScreen: (s: Screen) => void;
   openNews: () => void;
@@ -110,12 +65,7 @@ type Actions = {
   saveCustomClub: (club: ClubCustomization) => string | null;
   duplicateCustomClub: (id: string) => void;
   deleteCustomClub: (id: string) => void;
-  newGame: (
-    clubId: ClubId,
-    identity?: ClubCustomization | null,
-    rescueSeasons?: number | null,
-    keepBaseStadium?: boolean,
-  ) => void;
+  newGame: (clubId: ClubId, identity?: ClubCustomization | null, rescueSeasons?: number | null, keepBaseStadium?: boolean) => void;
   buyStadiumUpgrade: (id: StadiumUpgradeId) => string | null;
   setStadiumTicketPrice: (price: number) => string | null;
   abandon: () => void;
@@ -225,17 +175,27 @@ function patchEventFields(p: Player): Pick<Player, "absence" | "bond" | "valueMo
   const a = p.absence;
   const absence =
     a && typeof a.games === "number" && Number.isFinite(a.games) && a.games > 0 && kinds.includes(a.kind)
-      ? { games: Math.min(12, Math.round(a.games)), kind: a.kind, reason: typeof a.reason === "string" && a.reason ? a.reason : "Ausencia" }
+      ? {
+          games: Math.min(12, Math.round(a.games)),
+          kind: a.kind,
+          reason: typeof a.reason === "string" && a.reason ? a.reason : "Ausencia",
+        }
       : undefined;
   const b = p.bond;
   const bond =
     b && typeof b.club === "number" && typeof b.squad === "number"
-      ? { club: Math.max(0, Math.min(100, Math.round(b.club))), squad: Math.max(0, Math.min(100, Math.round(b.squad))) }
+      ? {
+          club: Math.max(0, Math.min(100, Math.round(b.club))),
+          squad: Math.max(0, Math.min(100, Math.round(b.squad))),
+        }
       : undefined;
   const v = p.valueMod;
   const valueMod =
     v && typeof v.pct === "number" && typeof v.games === "number" && v.games > 0
-      ? { pct: Math.max(-40, Math.min(40, Math.round(v.pct))), games: Math.min(20, Math.round(v.games)) }
+      ? {
+          pct: Math.max(-40, Math.min(40, Math.round(v.pct))),
+          games: Math.min(20, Math.round(v.games)),
+        }
       : undefined;
   return { absence, bond, valueMod };
 }
@@ -243,8 +203,7 @@ function patchEventFields(p: Player): Pick<Player, "absence" | "bond" | "valueMo
 function patchPlayer(p: Player): Player {
   const n = typeof p.number === "number" && p.number >= 1 ? p.number : fallbackNumber(p);
   const ovr = clamp(Number.isFinite(p.ovr) ? p.ovr : 40, 40, 100);
-  const legacyPotential =
-    p.name.trim().toLocaleLowerCase() === "mauro schönfeld" && p.pot > 100 ? 73 : p.pot;
+  const legacyPotential = p.name.trim().toLocaleLowerCase() === "mauro schönfeld" && p.pot > 100 ? 73 : p.pot;
   const pot = normalizePotential(ovr, legacyPotential);
   // Partidas viejas: el portero gana sus estadísticas y todos quedan acordes a su GRL.
   const stats: Player = {
@@ -329,7 +288,13 @@ export function emptyShell(): GameSave {
     mundialStandings: [],
     fixtures: [],
     calendar: [],
-    tactics: { formation: "433", mentality: "balanced", lineup: [], bench: [], numberColor: "auto" },
+    tactics: {
+      formation: "433",
+      mentality: "balanced",
+      lineup: [],
+      bench: [],
+      numberColor: "auto",
+    },
     budget: 0,
     news: [],
     lastMatch: null,
@@ -385,12 +350,14 @@ function normalizeRescue(raw: GameSave["clubRescue"]): GameSave["clubRescue"] {
   const history = Array.isArray(raw.history)
     ? raw.history.slice(-50).flatMap((item) => {
         if (!item || !Number.isFinite(item.season) || !Number.isFinite(item.paid) || !Number.isFinite(item.balance)) return [];
-        return [{
-          season: Math.round(item.season),
-          paid: Math.max(0, Math.round(item.paid)),
-          balance: Math.max(0, Math.round(item.balance)),
-          missed: Boolean(item.missed),
-        }];
+        return [
+          {
+            season: Math.round(item.season),
+            paid: Math.max(0, Math.round(item.paid)),
+            balance: Math.max(0, Math.round(item.balance)),
+            missed: Boolean(item.missed),
+          },
+        ];
       })
     : [];
   return {
@@ -413,6 +380,7 @@ function pickData(s: GameSave, normalizePlayers = true): GameSave {
     divisions: s.divisions,
     version: SAVE_VERSION,
     slot: s.slot,
+    careerId: s.careerId ?? `legacy:${s.slot}:${s.clubId}:${s.season}:${s.seed}`,
     seed: s.seed,
     simulationMode: "custom",
     detailedLeagues: [],
@@ -420,17 +388,11 @@ function pickData(s: GameSave, normalizePlayers = true): GameSave {
     week: s.week,
     cursor: s.cursor,
     clubId: s.clubId,
-    clubIdentity: s.clubIdentity ? normalizeCustomClubs([s.clubIdentity])[0] ?? null : null,
+    clubIdentity: s.clubIdentity ? (normalizeCustomClubs([s.clubIdentity])[0] ?? null) : null,
     stadiums: normalizeStadiums(s.stadiums, s.clubId, s.season, s.clubIdentity),
     clubRescue: normalizeRescue(s.clubRescue),
     screen: s.screen,
-    players: normalizePlayers
-      ? cleanPlayerNames((s.players ?? []).map(patchPlayer)).map((player) =>
-          player.name.trim().toLocaleLowerCase() === "gustavo curti"
-            ? { ...player, pos: "ST" }
-            : player,
-        )
-      : (s.players ?? []),
+    players: normalizePlayers ? cleanPlayerNames((s.players ?? []).map(patchPlayer)).map((player) => (player.name.trim().toLocaleLowerCase() === "gustavo curti" ? { ...player, pos: "ST" } : player)) : (s.players ?? []),
     standings: s.standings ?? [],
     leagueTables: { ...emptyLeagueTables(), ...(s.leagueTables ?? {}) },
     uclStandings: s.uclStandings ?? [],
@@ -571,10 +533,17 @@ function pickData(s: GameSave, normalizePlayers = true): GameSave {
   return r;
 }
 
-
 const OLD_GHOST_ID = /^(br|cl|co|bo|ec|uy|py|pe|ve|ar)\d{2}$/;
 const OLD_GHOST_COUNTRY: Record<string, string> = {
-  br: "BRA", cl: "CHI", co: "COL", bo: "BOL", ec: "ECU", uy: "URU", py: "PAR", pe: "PER", ve: "VEN",
+  br: "BRA",
+  cl: "CHI",
+  co: "COL",
+  bo: "BOL",
+  ec: "ECU",
+  uy: "URU",
+  py: "PAR",
+  pe: "PER",
+  ve: "VEN",
 };
 
 /**
@@ -600,7 +569,10 @@ function migrateConmebolClubs(r: GameSave): GameSave {
       const target = list[Math.min(n, list.length - 1)];
       if (target) map.set(id, target);
     }
-    const kept = { ...r, players: r.players.filter((p) => !OLD_GHOST_ID.test(p.clubId) || map.has(p.clubId)) };
+    const kept = {
+      ...r,
+      players: r.players.filter((p) => !OLD_GHOST_ID.test(p.clubId) || map.has(p.clubId)),
+    };
     const json = JSON.stringify(kept).replace(/"(?:br|cl|co|bo|ec|uy|py|pe|ve)\d{2}"/g, (m) => {
       const id = m.slice(1, -1);
       return `"${map.get(id) ?? id}"`;
@@ -631,7 +603,10 @@ function normalizeTrainingPlans(raw: Partial<GameSave> & { trainingPlan?: unknow
     const assignments = pl.assignments.filter((a) => a?.playerId && !seenPlayers.has(a.playerId));
     seenTiers.add(pl.tier);
     for (const a of assignments) seenPlayers.add(a.playerId);
-    out.push({ ...pl, assignments: assignments.map((a) => ({ playerId: a.playerId })) });
+    out.push({
+      ...pl,
+      assignments: assignments.map((a) => ({ playerId: a.playerId })),
+    });
   };
   if (Array.isArray(raw.trainingPlans)) {
     for (const pl of raw.trainingPlans) {
@@ -648,7 +623,12 @@ function normalizeTrainingPlans(raw: Partial<GameSave> & { trainingPlan?: unknow
     }
   }
   const legacy = raw.trainingPlan as
-    | { assignments?: Array<{ playerId: string }>; startDate?: string; elapsedDays?: number; totalDays?: number }
+    | {
+        assignments?: Array<{ playerId: string }>;
+        startDate?: string;
+        elapsedDays?: number;
+        totalDays?: number;
+      }
     | null
     | undefined;
   if (legacy && Array.isArray(legacy.assignments)) {
@@ -671,7 +651,11 @@ function normalizeTrainingReports(raw: Partial<GameSave> & { trainingReport?: un
   if (Array.isArray(raw.trainingReports)) {
     for (const r of raw.trainingReports) {
       if (r && Array.isArray(r.results)) {
-        out.push({ ...r, tier: TRAINING_TIER_IDS.includes(r.tier) ? r.tier : "intensive", cost: Number(r.cost) || 0 });
+        out.push({
+          ...r,
+          tier: TRAINING_TIER_IDS.includes(r.tier) ? r.tier : "intensive",
+          cost: Number(r.cost) || 0,
+        });
       }
     }
   }
@@ -716,13 +700,23 @@ function snapshotSlots(s: GameStore): Array<GameSave | null> {
   const slots = padSlots(s.slots);
   const idx = clampSlot(s.slot);
   if (s.clubId && isSelectableClub(s.clubId)) {
-    slots[idx] = pickData({ ...s, slot: idx, screen: playableScreen(s.screen) });
+    slots[idx] = pickData({
+      ...s,
+      slot: idx,
+      screen: playableScreen(s.screen),
+    });
   }
   return slots;
 }
 
 function cloneSave(s: GameSave): GameSave {
   return structuredClone(pickData(s, false));
+}
+
+function recordGlobalActivity(current: Pick<GameStore, "fixtures" | "globalCareerHistory">, save: GameSave): GlobalCareerHistory {
+  const playedBefore = new Set(current.fixtures.filter((fixture) => fixture.played).map((fixture) => fixture.id));
+  const newUserFixtures = save.fixtures.filter((fixture) => fixture.played && !playedBefore.has(fixture.id) && (fixture.homeId === save.clubId || fixture.awayId === save.clubId));
+  return recordGlobalSeasonAwards(recordGlobalMatches(recordGlobalCareerSeasons(current.globalCareerHistory, save), save, newUserFixtures), save);
 }
 
 function settleRescueInstallment(save: GameSave): GameSave["news"][number] | null {
@@ -736,9 +730,7 @@ function settleRescueInstallment(save: GameSave): GameSave["news"][number] | nul
     week: 0,
     tone: settlement.missed ? "bad" : "neutral",
     title: settlement.missed ? `Incumplimiento del rescate · ${club.name}` : `Cuota de rescate · ${club.name}`,
-    body: settlement.missed
-      ? `Se pagaron ${formatMoney(settlement.paid)} de ${formatMoney(settlement.due)}. La deuda pendiente recibió una penalización progresiva; ahora es ${formatMoney(settlement.rescue.balance)}.`
-      : `Se pagó ${formatMoney(settlement.paid)}. Restan ${formatMoney(settlement.rescue.balance)} de deuda.`,
+    body: settlement.missed ? `Se pagaron ${formatMoney(settlement.paid)} de ${formatMoney(settlement.due)}. La deuda pendiente recibió una penalización progresiva; ahora es ${formatMoney(settlement.rescue.balance)}.` : `Se pagó ${formatMoney(settlement.paid)}. Restan ${formatMoney(settlement.rescue.balance)} de deuda.`,
   } satisfies GameSave["news"][number];
   save.news.unshift(paymentNews);
   return paymentNews;
@@ -781,6 +773,7 @@ type PersistShape = {
   slot: number;
   slots: Array<GameSave | null>;
   customClubs: ClubCustomization[];
+  globalCareerHistory: GlobalCareerHistory;
 };
 
 function normalizeCustomClubs(raw: unknown): ClubCustomization[] {
@@ -795,32 +788,39 @@ function normalizeCustomClubs(raw: unknown): ClubCustomization[] {
     seen.add(id);
     const color = typeof club.color === "string" && /^#[0-9a-f]{6}$/i.test(club.color) ? club.color : "#1f6feb";
     const color2 = typeof club.color2 === "string" && /^#[0-9a-f]{6}$/i.test(club.color2) ? club.color2 : "#ffffff";
-    const crest = typeof club.crest === "string" && /^(https?:\/\/|\/|data:image\/)/i.test(club.crest)
-      ? club.crest.slice(0, 1_400_000)
-      : "";
-    return [{
-      id,
-      ...(typeof club.targetClubId === "string" ? { targetClubId: club.targetClubId } : {}),
-      name,
-      short: typeof club.short === "string" && club.short.trim() ? club.short.trim().slice(0, 8) : name.slice(0, 4).toUpperCase(),
-      city: typeof club.city === "string" ? club.city.trim().slice(0, 50) : "",
-      stadium: typeof club.stadium === "string" ? club.stadium.trim().slice(0, 60) : "",
-      capacity: Math.round(clamp(Number(club.capacity) || 5000, 500, 200_000)),
-      stadiumFacilities: Math.round(clamp(Number(club.stadiumFacilities) || 2, 1, 5)),
-      color,
-      color2,
-      crest,
-      crestBackgroundTransparent: club.crestBackgroundTransparent === true,
-      prestige: Math.round(clamp(Number(club.prestige) || 50, 1, 100)),
-      ...(Number.isFinite(club.startingBudget)
-        ? { startingBudget: Math.round(clamp(club.startingBudget!, 0, 2_000_000_000)) }
-        : {}),
-    }];
+    const crest = typeof club.crest === "string" && /^(https?:\/\/|\/|data:image\/)/i.test(club.crest) ? club.crest.slice(0, 1_400_000) : "";
+    return [
+      {
+        id,
+        ...(typeof club.targetClubId === "string" ? { targetClubId: club.targetClubId } : {}),
+        name,
+        short: typeof club.short === "string" && club.short.trim() ? club.short.trim().slice(0, 8) : name.slice(0, 4).toUpperCase(),
+        city: typeof club.city === "string" ? club.city.trim().slice(0, 50) : "",
+        stadium: typeof club.stadium === "string" ? club.stadium.trim().slice(0, 60) : "",
+        capacity: Math.round(clamp(Number(club.capacity) || 5000, 500, 200_000)),
+        stadiumFacilities: Math.round(clamp(Number(club.stadiumFacilities) || 2, 1, 5)),
+        color,
+        color2,
+        crest,
+        crestBackgroundTransparent: club.crestBackgroundTransparent === true,
+        prestige: Math.round(clamp(Number(club.prestige) || 50, 1, 100)),
+        ...(Number.isFinite(club.startingBudget)
+          ? {
+              startingBudget: Math.round(clamp(club.startingBudget!, 0, 2_000_000_000)),
+            }
+          : {}),
+      },
+    ];
   });
 }
 
 function migratePersisted(persisted: unknown, version: number): PersistShape {
-  const empty: PersistShape = { slot: 0, slots: emptySlots(), customClubs: [] };
+  const empty: PersistShape = {
+    slot: 0,
+    slots: emptySlots(),
+    customClubs: [],
+    globalCareerHistory: { ...EMPTY_GLOBAL_CAREER_HISTORY },
+  };
   if (!persisted || typeof persisted !== "object") return empty;
 
   const raw = persisted as Record<string, unknown>;
@@ -828,7 +828,12 @@ function migratePersisted(persisted: unknown, version: number): PersistShape {
   if (version >= 2 && Array.isArray(raw.slots)) {
     const slots = padSlots(raw.slots as Array<GameSave | null>);
     const slot = clampSlot(raw.slot);
-    return { slot, slots, customClubs: normalizeCustomClubs(raw.customClubs) };
+    return {
+      slot,
+      slots,
+      customClubs: normalizeCustomClubs(raw.customClubs),
+      globalCareerHistory: normalizeGlobalCareerHistory(raw.globalCareerHistory),
+    };
   }
 
   const save = normalizeSave(raw as Partial<GameSave>);
@@ -837,7 +842,12 @@ function migratePersisted(persisted: unknown, version: number): PersistShape {
   save.screen = playableScreen(save.screen);
   const legacySlots = emptySlots();
   legacySlots[0] = save;
-  return { slot: 0, slots: legacySlots, customClubs: normalizeCustomClubs(raw.customClubs) };
+  return {
+    slot: 0,
+    slots: legacySlots,
+    customClubs: normalizeCustomClubs(raw.customClubs),
+    globalCareerHistory: normalizeGlobalCareerHistory(raw.globalCareerHistory),
+  };
 }
 
 export const useGame = create<GameStore>()(
@@ -847,12 +857,16 @@ export const useGame = create<GameStore>()(
       hydrated: false,
       slots: emptySlots(),
       customClubs: [],
+      globalCareerHistory: { ...EMPTY_GLOBAL_CAREER_HISTORY },
       setHydrated: (v) => set({ hydrated: v }),
       setScreen: (screen) => set({ screen }),
       openNews: () => {
         const currentNews = get().news;
         if (currentNews.some((item) => !item.seen)) {
-          set({ screen: "news", news: currentNews.map((item) => item.seen ? item : { ...item, seen: true }) });
+          set({
+            screen: "news",
+            news: currentNews.map((item) => (item.seen ? item : { ...item, seen: true })),
+          });
         } else {
           set({ screen: "news" });
         }
@@ -860,23 +874,17 @@ export const useGame = create<GameStore>()(
       markNewsRead: (newsId) => {
         const currentNews = get().news;
         const selected = currentNews.find((item) => item.id === newsId);
-        if (!selected || selected.read && selected.seen) return;
+        if (!selected || (selected.read && selected.seen)) return;
         set({
-          news: currentNews.map((item) => item.id === newsId ? { ...item, read: true, seen: true } : item),
+          news: currentNews.map((item) => (item.id === newsId ? { ...item, read: true, seen: true } : item)),
         });
       },
       markNewsIssueRead: (season, week, gameDate) => {
         const state = get();
-        const isInIssue = (item: NewsItem) =>
-          item.season === season &&
-          (gameDate
-            ? (item.gameDate ?? (item.season === state.season ? state.calendar[item.week]?.date : undefined)) === gameDate
-            : item.week === week);
+        const isInIssue = (item: NewsItem) => item.season === season && (gameDate ? (item.gameDate ?? (item.season === state.season ? state.calendar[item.week]?.date : undefined)) === gameDate : item.week === week);
         if (!state.news.some((item) => isInIssue(item) && (!item.read || !item.seen))) return;
         set({
-          news: state.news.map((item) =>
-            isInIssue(item) ? { ...item, read: true, seen: true } : item,
-          ),
+          news: state.news.map((item) => (isInIssue(item) ? { ...item, read: true, seen: true } : item)),
         });
       },
       setPressFrequency: (frequency) => set({ pressFrequency: normalizePressFrequency(frequency) }),
@@ -958,13 +966,23 @@ export const useGame = create<GameStore>()(
         });
       },
       clearSlot: (index) => {
-        const slots = snapshotSlots(get());
+        const current = get();
+        const slots = snapshotSlots(current);
         const i = clampSlot(index);
+        const deleted = slots[i];
+        const globalCareerHistory = deleted ? recordGlobalSeasonAwards(recordGlobalCareerSeasons(current.globalCareerHistory, deleted), deleted) : current.globalCareerHistory;
         slots[i] = null;
         if (get().slot === i) {
-          set({ ...emptyShell(), hydrated: true, slots, slot: i, screen: "slots" });
+          set({
+            ...emptyShell(),
+            hydrated: true,
+            slots,
+            slot: i,
+            screen: "slots",
+            globalCareerHistory,
+          });
         } else {
-          set({ slots });
+          set({ slots, globalCareerHistory });
         }
       },
       saveCustomClub: (club) => {
@@ -974,25 +992,24 @@ export const useGame = create<GameStore>()(
         if (!library.some((item) => item.id === normalized.id) && library.length >= 100) {
           return "La biblioteca admite hasta 100 identidades personalizadas.";
         }
-        set({ customClubs: library.some((item) => item.id === normalized.id)
-          ? library.map((item) => item.id === normalized.id ? normalized : item)
-          : [...library, normalized] });
+        set({
+          customClubs: library.some((item) => item.id === normalized.id) ? library.map((item) => (item.id === normalized.id ? normalized : item)) : [...library, normalized],
+        });
         return null;
       },
       duplicateCustomClub: (id) => {
         const source = get().customClubs.find((item) => item.id === id);
         if (!source || get().customClubs.length >= 100) return;
-        set({ customClubs: [...get().customClubs, { ...source, id: uid("club"), name: `${source.name} (copia)` }] });
+        set({
+          customClubs: [...get().customClubs, { ...source, id: uid("club"), name: `${source.name} (copia)` }],
+        });
       },
       deleteCustomClub: (id) => {
-        set({ customClubs: get().customClubs.filter((item) => item.id !== id) });
+        set({
+          customClubs: get().customClubs.filter((item) => item.id !== id),
+        });
       },
-      newGame: (
-        clubId,
-        identity,
-        rescueSeasons,
-        keepBaseStadium = false,
-      ) => {
+      newGame: (clubId, identity, rescueSeasons, keepBaseStadium = false) => {
         if (!isSelectableClub(clubId)) return;
         const slot = clampSlot(get().slot);
         const baseClub = clubById(clubId);
@@ -1016,12 +1033,7 @@ export const useGame = create<GameStore>()(
         save.clubIdentity = careerIdentity ? { ...careerIdentity, targetClubId: clubId } : null;
         save.stadiums = {
           ...(save.stadiums ?? {}),
-          [clubId]: createStadiumState(
-            clubById(clubId),
-            save.season,
-            careerIdentity?.capacity,
-            careerIdentity?.stadiumFacilities,
-          ),
+          [clubId]: createStadiumState(clubById(clubId), save.season, careerIdentity?.capacity, careerIdentity?.stadiumFacilities),
         };
         if (identity?.startingBudget !== undefined) {
           save.budget = Math.round(clamp(identity.startingBudget, 0, 2_000_000_000));
@@ -1064,15 +1076,27 @@ export const useGame = create<GameStore>()(
         const current = stadiumFor(save);
         const ticketPrice = Math.round(clamp(price, 3, 100));
         set({
-          stadiums: { ...(save.stadiums ?? {}), [save.clubId]: { ...current, ticketPrice } },
+          stadiums: {
+            ...(save.stadiums ?? {}),
+            [save.clubId]: { ...current, ticketPrice },
+          },
         });
         return ticketPrice === price ? null : `El precio se ajustó al rango permitido: ${formatMoney(ticketPrice)}.`;
       },
       abandon: () => {
-        const slot = clampSlot(get().slot);
-        const slots = snapshotSlots(get());
+        const current = get();
+        const slot = clampSlot(current.slot);
+        const slots = snapshotSlots(current);
+        const globalCareerHistory = recordGlobalSeasonAwards(recordGlobalCareerSeasons(current.globalCareerHistory, current), current);
         slots[slot] = null;
-        set({ ...emptyShell(), hydrated: true, slots, slot, screen: "slots" });
+        set({
+          ...emptyShell(),
+          hydrated: true,
+          slots,
+          slot,
+          screen: "slots",
+          globalCareerHistory,
+        });
       },
       setFormation: (formation) => {
         const s = cloneSave(get());
@@ -1155,7 +1179,9 @@ export const useGame = create<GameStore>()(
       autoBench: () => {
         const s = get();
         const squad = s.players.filter((p) => p.clubId === s.clubId);
-        set({ tactics: { ...s.tactics, bench: pickBench(squad, s.tactics.lineup) } });
+        set({
+          tactics: { ...s.tactics, bench: pickBench(squad, s.tactics.lineup) },
+        });
       },
       searchSponsors: () => {
         const s = cloneSave(get());
@@ -1235,7 +1261,8 @@ export const useGame = create<GameStore>()(
         set(s);
       },
       simulateNextCalendarSlot: (date) => {
-        const s = cloneSave(get());
+        const current = get();
+        const s = cloneSave(current);
         if (s.seasonOver || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !s.calendar.some((slot) => slot.date === date)) {
           return null;
         }
@@ -1244,19 +1271,13 @@ export const useGame = create<GameStore>()(
         const currentDate = slot.date;
         const startDate = currentDate;
         const fixturesById = new Map(s.fixtures.map((fixture) => [fixture.id, fixture]));
-        const playedFixtureIds = new Set(
-          slot.fixtures.filter((fixtureId) => fixturesById.get(fixtureId)?.played),
-        );
+        const playedFixtureIds = new Set(slot.fixtures.filter((fixtureId) => fixturesById.get(fixtureId)?.played));
         const matches: CalendarSimulationSummary["matches"] = [];
         simSlot(s);
         for (const fixture of s.fixtures) fixturesById.set(fixture.id, fixture);
         for (const fixtureId of slot.fixtures) {
           const fixture = fixturesById.get(fixtureId);
-          if (
-            !fixture?.played ||
-            playedFixtureIds.has(fixture.id) ||
-            (fixture.homeId !== s.clubId && fixture.awayId !== s.clubId)
-          ) {
+          if (!fixture?.played || playedFixtureIds.has(fixture.id) || (fixture.homeId !== s.clubId && fixture.awayId !== s.clubId)) {
             continue;
           }
           playedFixtureIds.add(fixture.id);
@@ -1273,12 +1294,8 @@ export const useGame = create<GameStore>()(
         }
         if (!s.board?.sacked) s.screen = "calendar";
         const nextSlot = s.calendar[s.cursor];
-        const done =
-          s.seasonOver ||
-          Boolean(s.board?.sacked) ||
-          !nextSlot?.date ||
-          nextSlot.date > date;
-        set(s);
+        const done = s.seasonOver || Boolean(s.board?.sacked) || !nextSlot?.date || nextSlot.date > date;
+        set({ ...s, globalCareerHistory: recordGlobalActivity(current, s) });
         return {
           targetDate: date,
           startDate,
@@ -1290,7 +1307,8 @@ export const useGame = create<GameStore>()(
         };
       },
       playPending: (watch) => {
-        const s = cloneSave(get());
+        const current = get();
+        const s = cloneSave(current);
         if (!s.pendingFixtureId) return;
         // Con bajas en el once no se juega: la pantalla del partido muestra el cartel con las opciones.
         if (lineupProblems(s).length) {
@@ -1308,17 +1326,18 @@ export const useGame = create<GameStore>()(
         simSlot(s);
         if (s.lastMatch) s.pendingPressConference = createPressConference(s, s.lastMatch, matchDate);
         s.screen = "result";
-        set(s);
+        set({ ...s, globalCareerHistory: recordGlobalActivity(current, s) });
       },
       finishLiveMatch: (result) => {
-        const s = cloneSave(get());
+        const current = get();
+        const s = cloneSave(current);
         if (!s.pendingFixtureId) return;
         sanitizeMissingLineup(s);
         const matchDate = { season: s.season, week: s.week };
         simSlot(s, result.fixtureId === s.pendingFixtureId ? result : undefined);
         if (s.lastMatch) s.pendingPressConference = createPressConference(s, s.lastMatch, matchDate);
         s.screen = "result";
-        set(s);
+        set({ ...s, globalCareerHistory: recordGlobalActivity(current, s) });
       },
       finishWatch: () => {
         const s = get();
@@ -1338,7 +1357,11 @@ export const useGame = create<GameStore>()(
         if (signed) {
           const squad = s.players.filter((x) => x.clubId === s.clubId);
           const placed = placeNewcomer(s.tactics, squad, signed);
-          s.tactics = { ...s.tactics, lineup: placed.lineup, bench: placed.bench };
+          s.tactics = {
+            ...s.tactics,
+            lineup: placed.lineup,
+            bench: placed.bench,
+          };
         }
         set({
           tactics: s.tactics,
@@ -1404,12 +1427,17 @@ export const useGame = create<GameStore>()(
         return null;
       },
       toggleListed: (playerId) => {
-        const clubId = get().clubId;
+        const { clubId, season } = get();
         const players = get().players.map((p) => {
           if (p.id !== playerId) return p;
           // Un cedido no se puede poner en venta: solo se permite quitar una marca que haya quedado.
           if (ownershipBlockReason(p, clubId)) return { ...p, listed: false, listedForLoan: false };
-          return { ...p, listed: !p.listed, listedForLoan: p.listed ? p.listedForLoan : false };
+          if (freeAgentSaleBlockReason(p, season)) return { ...p, listed: false };
+          return {
+            ...p,
+            listed: !p.listed,
+            listedForLoan: p.listed ? p.listedForLoan : false,
+          };
         });
         set({ players });
       },
@@ -1539,7 +1567,11 @@ export const useGame = create<GameStore>()(
         s.players.push(p);
         const squad = s.players.filter((x) => x.clubId === s.clubId);
         const placed = placeNewcomer(s.tactics, squad, p);
-        s.tactics = { ...s.tactics, lineup: placed.lineup, bench: placed.bench };
+        s.tactics = {
+          ...s.tactics,
+          lineup: placed.lineup,
+          bench: placed.bench,
+        };
         s.academy = s.academy.filter((x) => x.id !== youthId);
         s.news.unshift({
           id: uid("n"),
@@ -1548,7 +1580,14 @@ export const useGame = create<GameStore>()(
           title: `Cantera: ${p.name}`,
           body: `Sube al primer equipo por ${formatMoney(y.fee)}. GRL ${p.ovr} / POT ${p.pot}.`,
         });
-        set({ players: s.players, academy: s.academy, budget: s.budget, news: s.news, tactics: s.tactics, tempLineupBackup: null });
+        set({
+          players: s.players,
+          academy: s.academy,
+          budget: s.budget,
+          news: s.news,
+          tactics: s.tactics,
+          tempLineupBackup: null,
+        });
         return null;
       },
       releaseYouth: (youthId) => {
@@ -1592,7 +1631,9 @@ export const useGame = create<GameStore>()(
       dismissTrainingReport: () => {
         const reports = get().trainingReports;
         if (!reports.some((r) => !r.seen)) return;
-        set({ trainingReports: reports.map((r) => (r.seen ? r : { ...r, seen: true })) });
+        set({
+          trainingReports: reports.map((r) => (r.seen ? r : { ...r, seen: true })),
+        });
       },
       dismissPopup: () => {
         const popups = get().popups.slice(1);
@@ -1652,7 +1693,10 @@ export const useGame = create<GameStore>()(
         ensureFinance(s);
 
         // El club que dejas pasa a manejarse solo, con la caja que le dejaste.
-        s.clubFinance[oldId] = { budget: Math.max(0, s.budget), wageCap: Math.round(payroll(s, oldId) * 1.05) };
+        s.clubFinance[oldId] = {
+          budget: Math.max(0, s.budget),
+          wageCap: Math.round(payroll(s, oldId) * 1.05),
+        };
         // El club nuevo te entrega su propia caja de fichajes.
         const newBudget = s.clubFinance[newClubId]?.budget ?? baseTransferBudget(newClubId);
         delete s.clubFinance[newClubId];
@@ -1688,6 +1732,7 @@ export const useGame = create<GameStore>()(
         s.tactics.bench = pickBench(squad, s.tactics.lineup);
 
         const next = evolveSeason(s);
+        const globalCareerHistory = recordGlobalSeasonAwards(recordGlobalCareerSeasons(current.globalCareerHistory, prev), current);
         next.news.unshift({
           id: uid("n"),
           week: 0,
@@ -1697,7 +1742,7 @@ export const useGame = create<GameStore>()(
         });
         const slots = snapshotSlots(current);
         slots[slot] = next;
-        set({ ...next, slots, hydrated: true });
+        set({ ...next, slots, hydrated: true, globalCareerHistory });
         return null;
       },
       startNextSeason: () => {
@@ -1708,10 +1753,11 @@ export const useGame = create<GameStore>()(
         archiveSeason(closing);
         const rescuePaymentNews = settleRescueInstallment(closing);
         const next = evolveSeason(closing);
+        const globalCareerHistory = recordGlobalSeasonAwards(recordGlobalCareerSeasons(prev.globalCareerHistory, next), prev);
         if (rescuePaymentNews) next.news.unshift(rescuePaymentNews);
         const slots = snapshotSlots(prev);
         slots[slot] = next;
-        set({ ...next, slots, hydrated: true });
+        set({ ...next, slots, hydrated: true, globalCareerHistory });
       },
     }),
     {
@@ -1726,7 +1772,12 @@ export const useGame = create<GameStore>()(
         if (s.clubId && isSelectableClub(s.clubId)) {
           slots[idx] = pickData({ ...s, slot: idx, screen: playableScreen(s.screen) }, false);
         }
-        return { slot: idx, slots, customClubs: normalizeCustomClubs(s.customClubs) };
+        return {
+          slot: idx,
+          slots,
+          customClubs: normalizeCustomClubs(s.customClubs),
+          globalCareerHistory: normalizeGlobalCareerHistory(s.globalCareerHistory),
+        };
       },
       migrate: (persisted, version) => migratePersisted(persisted, version),
       merge: (persisted, current) => {
@@ -1742,6 +1793,7 @@ export const useGame = create<GameStore>()(
             ...active,
             slots,
             customClubs: normalizeCustomClubs(p.customClubs),
+            globalCareerHistory: normalizeGlobalCareerHistory(p.globalCareerHistory),
             slot,
             screen: playableScreen(active.screen),
           };
@@ -1753,6 +1805,7 @@ export const useGame = create<GameStore>()(
           ...emptyShell(),
           slots,
           customClubs: normalizeCustomClubs(p.customClubs),
+          globalCareerHistory: normalizeGlobalCareerHistory(p.globalCareerHistory),
           slot: first >= 0 ? first : slot,
           screen: "boot",
         };

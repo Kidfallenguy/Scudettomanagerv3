@@ -1,4 +1,5 @@
 import type { PersistStorage, StorageValue } from "zustand/middleware";
+import type { GlobalCareerHistory } from "./global-history";
 
 /**
  * Almacenamiento de las partidas.
@@ -18,7 +19,11 @@ const DEBOUNCE_MS = 1500;
 /** Mínimo de slots que se intentan leer, aunque el registro guardado diga menos. */
 const MIN_READ = 5;
 
-type Shape = { slot: number; slots: Array<unknown | null> };
+type Shape = {
+  slot: number;
+  slots: Array<unknown | null>;
+  globalCareerHistory?: GlobalCareerHistory;
+};
 type Value = StorageValue<Shape>;
 
 function idbAvailable(): boolean {
@@ -76,14 +81,26 @@ async function readIdb(): Promise<Value | null> {
   const db = await openDb();
   const tx = db.transaction(STORE, "readonly");
   const store = tx.objectStore(STORE);
-  const meta = (await reqToPromise(store.get(META_KEY))) as { slot: number; version: number; count: number } | undefined;
+  const meta = (await reqToPromise(store.get(META_KEY))) as
+    | {
+        slot: number;
+        version: number;
+        count: number;
+        globalCareerHistory?: GlobalCareerHistory;
+      }
+    | undefined;
   if (!meta) return null;
   // Se leen al menos MIN_READ registros: si antes se guardaron menos slots que ahora, no se pierde nada.
   const count = Math.max(meta.count ?? 0, MIN_READ);
-  const slots = await Promise.all(
-    Array.from({ length: count }, (_, i) => reqToPromise(store.get(slotKey(i))).then((v) => (v as unknown) ?? null)),
-  );
-  return { state: { slot: meta.slot, slots }, version: meta.version };
+  const slots = await Promise.all(Array.from({ length: count }, (_, i) => reqToPromise(store.get(slotKey(i))).then((v) => (v as unknown) ?? null)));
+  return {
+    state: {
+      slot: meta.slot,
+      slots,
+      globalCareerHistory: meta.globalCareerHistory,
+    },
+    version: meta.version,
+  };
 }
 
 /** Últimos objetos que ya quedaron escritos en IndexedDB, por slot (para no reescribir lo que no cambió). */
@@ -93,7 +110,7 @@ async function writeIdb(value: Value): Promise<void> {
   const db = await openDb();
   const tx = db.transaction(STORE, "readwrite");
   const store = tx.objectStore(STORE);
-  const { slot, slots } = value.state;
+  const { slot, slots, globalCareerHistory } = value.state;
   const touched: Array<[number, unknown]> = [];
   slots.forEach((s, i) => {
     if (written[i] === s && i in written) return; // sin cambios desde la última escritura
@@ -103,7 +120,15 @@ async function writeIdb(value: Value): Promise<void> {
   });
   // Registros que sobren de versiones con más slots.
   for (let i = slots.length; i < slots.length + 16; i++) store.delete(slotKey(i));
-  store.put({ slot, version: value.version ?? 0, count: slots.length }, META_KEY);
+  store.put(
+    {
+      slot,
+      version: value.version ?? 0,
+      count: slots.length,
+      globalCareerHistory,
+    },
+    META_KEY,
+  );
   await txDone(tx);
   // Recién acá, con la transacción confirmada, se da por guardado.
   for (const [i, s] of touched) written[i] = s;
@@ -182,6 +207,7 @@ export function createSaveStorage(): PersistStorage<Shape> {
               const merged = [...fromIdb.state.slots];
               for (let i = 0; i < lslots.length; i++) if (!merged[i] && lslots[i]) merged[i] = lslots[i];
               fromIdb.state.slots = merged;
+              fromIdb.state.globalCareerHistory ??= legacy.state.globalCareerHistory;
             }
             return fromIdb as Value;
           }

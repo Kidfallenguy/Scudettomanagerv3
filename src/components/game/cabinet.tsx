@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Trophy } from "lucide-react";
 import { AwardsHallOfFame } from "@/components/game/award-history-view";
+import { GlobalCareerHistory } from "@/components/game/global-career-history";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { clubById } from "@/lib/game/clubs";
@@ -111,7 +112,13 @@ export function Cabinet() {
           </section>
         </>
       ) : tab === "premios" ? (
-        <AwardsHallOfFame />
+        <>
+          <GlobalCareerHistory />
+          <section>
+            <h3 className="mb-2 text-sm font-medium">Ganadores de todas las ligas</h3>
+            <AwardsHallOfFame />
+          </section>
+        </>
       ) : (
         <div className="overflow-hidden rounded-2xl bg-surface shadow-[var(--shadow-border)]">
           <table className="w-full text-sm">

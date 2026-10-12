@@ -6,6 +6,7 @@ import { freeNumber, signFreeAgent } from "./free-agents";
 import { ensurePos } from "./positions";
 import {
   SQUAD_FULL_MSG,
+  freeAgentSaleBlockReason,
   hasSquadRoom,
   isOwnedAtClub,
   ownPlayers,
@@ -156,6 +157,7 @@ export function processMarketWeek(save: GameSave, rng: Rng) {
   });
 
   for (const p of mine) {
+    if (freeAgentSaleBlockReason(p, save.season)) continue;
     // El usuario bloqueó las ofertas por este jugador.
     if (p.noOffers) continue;
     if (p.listedForLoan) {

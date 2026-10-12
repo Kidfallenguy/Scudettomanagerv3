@@ -296,6 +296,8 @@ export interface Player {
   bond?: PlayerBond;
   /** Cambio temporal del valor de mercado (un escándalo, un buen momento...). */
   valueMod?: { pct: number; games: number };
+  /** Temporada en que llegó libre al club; no se puede vender durante esa misma temporada. */
+  freeAgentSignedSeason?: number;
 }
 
 /** Por qué un jugador falta sin estar lesionado ni sancionado. */
@@ -1118,6 +1120,8 @@ export interface BoardState {
 export interface GameSave {
   version: number;
   slot: number;
+  /** Identificador estable de esta carrera, compartido entre temporadas y cambios de club. */
+  careerId?: string;
   seed: number;
   simulationMode?: SimulationMode;
   detailedLeagues?: PlayableLeagueId[];

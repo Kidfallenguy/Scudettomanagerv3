@@ -1353,6 +1353,7 @@ export function createCareer(clubId: ClubId, seed = Date.now() % 1_000_000_000, 
   return {
     version: 6,
     slot,
+    careerId: uid("career"),
     seed,
     season: 2026,
     week: 1,
@@ -2142,20 +2143,33 @@ export function resolveDrawWinner(f: Fixture, seed: number): string {
   return rng.chance(0.5) ? f.homeId : f.awayId;
 }
 
+const LOWER_DIVISION_PRIZE_MULTIPLIER = 0.5;
+const LOWER_DIVISION_LEAGUES = new Set<LeagueKind>([
+  "serieB", "serieC", "serieD", "championship", "leagueOne", "leagueTwo",
+  "segunda", "rfef", "primeraFed1", "primeraFed2", "bundesliga2", "bundesliga3",
+  "ligue2", "ligue3", "primeraNacional", "primeraBMetro", "argentinaCuarta",
+  "argentinaQuinta", "promocionalAmateur", "brasileiraoB", "brasileiraoC",
+  "primeira2", "eersteDivisie", "tweedeDivisie", "uslChampionship", "saudiFirstDivision",
+]);
+
 export function prizeForPlace(place: number, league: LeagueKind = "serieA") {
   const tables: Record<string, number[]> = {
     serieA: [42, 36, 30, 26, 22, 18, 16, 14, 12, 10, 9, 8, 7, 6, 5, 5, 4, 4, 3, 3],
-    // Serie B (20 clubes): premios muy por debajo de la Serie A (el último cobra ~0,9 M).
+    // Los premios de las divisiones B e inferiores se reducen al abonarlos.
     serieB: [5, 4.2, 3.6, 3.2, 2.9, 2.6, 2.4, 2.2, 2, 1.9, 1.8, 1.7, 1.6, 1.5, 1.4, 1.3, 1.2, 1.1, 1, 0.9],
+    serieC: [1.8, 1.5, 1.3, 1.15, 1, 0.9, 0.8, 0.7, 0.62, 0.55, 0.48, 0.42, 0.36, 0.3, 0.25, 0.2, 0.17, 0.14, 0.11, 0.08],
+    serieD: [0.4, 0.35, 0.3, 0.27, 0.24, 0.21, 0.19, 0.17, 0.15, 0.13, 0.12, 0.11, 0.1, 0.09, 0.08, 0.07, 0.06, 0.05, 0.04, 0.03],
     premier: [55, 48, 42, 36, 32, 28, 24, 21, 18, 16, 14, 12, 11, 10, 9, 8, 7, 6, 5, 5],
-    // Championship (24 clubes): derechos de TV y premios muy por debajo de la Premier (el último cobra ~1,8 M).
+    // Championship (24 clubes): derechos de TV y premios muy por debajo de la Premier.
     championship: [12, 10, 9, 8, 7.5, 7, 6.5, 6, 5.5, 5, 4.5, 4.2, 4, 3.8, 3.6, 3.4, 3.2, 3, 2.8, 2.6, 2.4, 2.2, 2, 1.8],
-    // League One (24 clubes): muy por debajo de la Championship (el campeón cobra 3,6 M y el último ~0,5 M).
+    // League One (24 clubes): muy por debajo de la Championship.
     leagueOne: [3.6, 3.2, 2.9, 2.7, 2.5, 2.3, 2.1, 1.95, 1.8, 1.7, 1.6, 1.5, 1.4, 1.3, 1.2, 1.1, 1, 0.95, 0.85, 0.75, 0.7, 0.6, 0.55, 0.5],
+    leagueTwo: [2.4, 2.1, 1.8, 1.5, 1.3, 1.1, 0.95, 0.85, 0.75, 0.65, 0.55, 0.5, 0.45, 0.4, 0.35, 0.3, 0.25, 0.2, 0.18, 0.15, 0.13, 0.11, 0.09, 0.07],
     // LaLiga Hypermotion (22 clubes): muy por debajo de LaLiga EA Sports (el último cobra ~1,5 M).
     // Primera Federación (20 clubes por grupo): premios muy por debajo de LaLiga Hypermotion (el último cobra ~0,3 M).
     primeraFed1: [2.6, 2.2, 1.9, 1.7, 1.5, 1.35, 1.2, 1.1, 1, 0.9, 0.85, 0.8, 0.7, 0.65, 0.6, 0.5, 0.45, 0.4, 0.35, 0.3],
     primeraFed2: [2.6, 2.2, 1.9, 1.7, 1.5, 1.35, 1.2, 1.1, 1, 0.9, 0.85, 0.8, 0.7, 0.65, 0.6, 0.5, 0.45, 0.4, 0.35, 0.3],
+    rfef: [2.6, 2.2, 1.9, 1.7, 1.5, 1.35, 1.2, 1.1, 1, 0.9, 0.85, 0.8, 0.7, 0.65, 0.6, 0.5, 0.45, 0.4, 0.35, 0.3],
     segunda: [10, 8.5, 7.5, 6.8, 6.2, 5.7, 5.2, 4.8, 4.4, 4.1, 3.8, 3.5, 3.3, 3.1, 2.9, 2.7, 2.5, 2.3, 2.1, 1.9, 1.7, 1.5],
     laliga: [48, 42, 36, 32, 28, 24, 20, 18, 16, 14, 12, 11, 10, 9, 8, 7, 6, 5, 4, 4],
     bundesliga: [44, 38, 32, 28, 24, 20, 17, 15, 13, 11, 10, 9, 8, 7, 6, 5, 4, 4],
@@ -2178,14 +2192,24 @@ export function prizeForPlace(place: number, league: LeagueKind = "serieA") {
     // Série B brasileña (20 clubes): premios muy por debajo de la Série A (el último cobra ~1,1 M frente a los 3 M de la A).
     brasileiraoB: [6, 5, 4.4, 3.9, 3.5, 3.2, 2.9, 2.7, 2.5, 2.3, 2.1, 1.9, 1.8, 1.7, 1.6, 1.5, 1.4, 1.3, 1.2, 1.1],
     brasileiraoC: [2.4, 2.1, 1.9, 1.7, 1.5, 1.35, 1.2, 1.05, 0.95, 0.85, 0.75, 0.68, 0.6, 0.52, 0.46, 0.4, 0.36, 0.33, 0.3, 0.27],
+    brasileirao: [32, 27, 23, 19, 16, 14, 12, 10, 8, 7, 6, 5, 4.5, 4, 3.5, 3, 2.8, 2.5, 2.2, 2],
     // Primeira Liga (18 clubes): muy por debajo de las cinco grandes ligas (el campeón cobra 14 M y el último ~1,8 M).
     primeira: [14, 11.5, 10, 8.5, 7.2, 6.2, 5.4, 4.8, 4.3, 3.9, 3.5, 3.2, 2.9, 2.6, 2.4, 2.2, 2, 1.8],
     // Liga Portugal 2 (18 clubes): muy por debajo de la Primeira Liga (el campeón cobra 2,8 M y el último ~0,65 M).
     primeira2: [2.8, 2.4, 2.1, 1.9, 1.7, 1.55, 1.4, 1.3, 1.2, 1.1, 1, 0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65],
+    eredivisie: [20, 17, 14, 12, 10, 8.5, 7, 6, 5, 4.5, 4, 3.5, 3, 2.5, 2, 1.5, 1, 0.7],
+    eersteDivisie: [3, 2.6, 2.3, 2.1, 1.9, 1.7, 1.55, 1.4, 1.3, 1.2, 1.1, 1, 0.9, 0.8, 0.75, 0.7, 0.65, 0.6],
+    tweedeDivisie: [0.8, 0.7, 0.62, 0.55, 0.48, 0.42, 0.36, 0.3, 0.25, 0.21, 0.18, 0.15, 0.13, 0.11, 0.09, 0.07, 0.05, 0.03],
+    mls: [20, 17, 14, 12, 10, 8.5, 7, 6, 5, 4.5, 4, 3.5, 3, 2.5, 2, 1.5, 1, 0.7],
+    uslChampionship: [3, 2.6, 2.3, 2, 1.8, 1.6, 1.4, 1.25, 1.1, 1, 0.9, 0.8, 0.7, 0.6, 0.5],
+    saudiProLeague: [35, 30, 26, 22, 19, 16, 14, 12, 10, 8, 7, 6, 5, 4, 3, 2],
+    saudiFirstDivision: [5, 4.2, 3.6, 3.1, 2.7, 2.4, 2.1, 1.9, 1.7, 1.5, 1.3, 1.1, 0.9, 0.7, 0.5, 0.3],
     europe: [42, 36, 30, 26, 22, 18, 16, 14, 12, 10, 9, 8, 7, 6, 5, 5, 4, 4, 3, 3],
   };
-  const table = tables[league] ?? tables.serieA;
-  return Math.round((table[place] ?? (league === "championship" ? 1.8 : league === "segunda" ? 1.5 : league === "primeraNacional" ? 0.8 : league === "serieB" ? 0.9 : league === "brasileiraoB" ? 1.1 : league === "brasileiraoC" ? 0.27 : league === "primeira" ? 1.8 : league === "primeira2" ? 0.65 : league === "leagueOne" ? 0.5 : league === "bundesliga3" ? 0.48 : league === "bundesliga2" || league === "ligue2" ? 1 : 3)) * 1_000_000);
+  const table = tables[league] ?? [0.5];
+  const rawPrize = table[place] ?? 0.5;
+  const multiplier = LOWER_DIVISION_LEAGUES.has(league) ? LOWER_DIVISION_PRIZE_MULTIPLIER : 1;
+  return Math.round(rawPrize * multiplier * 1_000_000);
 }
 
 export function awardTrophy(save: GameSave, kind: HonourKind, winnerId: string) {

@@ -93,9 +93,21 @@ export function ownershipBlockReason(p: Located | undefined | null, clubId: Club
  * 1) tiene que ser propio y estar en el club; 2) tras venderlo hay que seguir con SQUAD_MIN propios:
  * los cedidos NO reemplazan a los propios para llegar al mínimo.
  */
-export function saleBlockReason(save: Pick<GameSave, "players" | "clubId">, p: Player | undefined | null): string | null {
+export function freeAgentSaleBlockReason(p: Player | undefined | null, season: number): string | null {
+  if (p?.freeAgentSignedSeason === season) {
+    return "Los jugadores fichados como agentes libres no se pueden vender hasta la próxima temporada.";
+  }
+  return null;
+}
+
+export function saleBlockReason(
+  save: Pick<GameSave, "players" | "clubId"> & Partial<Pick<GameSave, "season">>,
+  p: Player | undefined | null,
+): string | null {
   const owner = ownershipBlockReason(p, save.clubId);
   if (owner) return owner;
+  const locked = freeAgentSaleBlockReason(p, save.season ?? Number.NaN);
+  if (locked) return locked;
   if (ownPlayers(save.players, save.clubId).length <= SQUAD_MIN) {
     return `No puedes bajar de ${SQUAD_MIN} jugadores propios. Los cedidos cuentan para el tope de plantilla, pero no se pueden vender ni reemplazan a un propio.`;
   }

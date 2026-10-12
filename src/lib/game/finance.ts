@@ -1,12 +1,47 @@
 import { CLUBS, clubById, clubRating, isSecondDivisionClub } from "./clubs";
 import { hash01 } from "./contracts";
 import { clamp } from "./format";
-import type { ClubFinance, ClubId, GameSave, Player, TransferRecord } from "./types";
+import type { ClubFinance, ClubId, GameSave, LeagueKind, Player, TransferRecord } from "./types";
 
 /** Id reservado para jugadores sin club (se repite aquí para no depender de free-agents). */
 export const NO_CLUB = "FA";
 
 const LOG_CAP = 600;
+
+/** Ayuda fija de pretemporada por división; los premios ligueros se calculan aparte. */
+export function seasonBudgetGrant(league: LeagueKind): number {
+  const grants: Partial<Record<LeagueKind, number>> = {
+    championship: 1_250_000,
+    segunda: 1_250_000,
+    primeraNacional: 1_250_000,
+    primeraBMetro: 500_000,
+    leagueOne: 500_000,
+    leagueTwo: 200_000,
+    serieB: 750_000,
+    serieC: 250_000,
+    serieD: 75_000,
+    brasileiraoB: 750_000,
+    brasileiraoC: 250_000,
+    bundesliga2: 750_000,
+    bundesliga3: 250_000,
+    ligue2: 750_000,
+    ligue3: 150_000,
+    primeira2: 350_000,
+    primeraFed1: 150_000,
+    primeraFed2: 150_000,
+    rfef: 150_000,
+    primeira: 1_500_000,
+    eredivisie: 1_500_000,
+    eersteDivisie: 350_000,
+    tweedeDivisie: 100_000,
+    uslChampionship: 300_000,
+    saudiFirstDivision: 500_000,
+    argentinaCuarta: 100_000,
+    argentinaQuinta: 25_000,
+    promocionalAmateur: 10_000,
+  };
+  return grants[league] ?? 6_000_000;
+}
 
 /** Versión del reajuste económico de las ligas B (ver ensureFinance). */
 const FIN_VERSION = 2;

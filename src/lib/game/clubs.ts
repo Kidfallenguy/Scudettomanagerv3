@@ -3185,67 +3185,41 @@ export function clubById(id: string): Club {
   return { ...FALLBACK_CLUB, id: id || "unk", name: short, short };
 }
 
-/**
- * Caja inicial del manager. La Championship maneja mucho menos dinero que la Premier (derechos de TV, taquilla y
- * patrocinios muy inferiores): ×0,45, de modo que el mejor club de la Championship siga por debajo del último de la Premier.
- */
+/** Caja inicial del manager, ajustada a la categoría para que el salto económico sea gradual. */
 export function startingBudget(prestige: number, league?: LeagueKind) {
   const raw = Math.pow(prestige / 10, 3.15) * 90_000;
-  // La Serie B maneja aún menos dinero que la Championship: ×0,4 (el mejor club sigue por debajo del último de la Serie A).
-  // La 2. Bundesliga, algo parecido: ×0,42 (sus clubes siguen por debajo del último de la Bundesliga).
-  const factor =
-    league === "championship" || league === "segunda" || league === "primeraNacional"
-      ? 0.45
-      : // La League One maneja bastante menos dinero que la Championship: ×0,3 (su mejor club queda por debajo de la media de la Championship).
-        league === "leagueOne"
-        ? 0.3
-        : league === "leagueTwo"
-          ? 0.18
-        : league === "serieB" || league === "serieC" || league === "brasileiraoB"
-        ? 0.4
-        : league === "brasileiraoC"
-          ? 0.2
-        : league === "serieD"
-          ? 0.18
-          : league === "bundesliga2" || league === "ligue2"
-          ? 0.42
-            : league === "ligue3"
-              ? 0.1
-          : league === "primeraBMetro"
-            ? 0.18
-          : league === "argentinaCuarta"
-            ? 0.11
-          : league === "argentinaQuinta"
-            ? 0.07
-          : league === "promocionalAmateur"
-            ? 0.04
-          : // La 3. Liga (semiprofesional) maneja bastante menos que la 2. Bundesliga: ×0,2.
-            league === "bundesliga3"
-            ? 0.2
-          : // La Primeira Liga maneja bastante menos dinero que las cinco grandes ligas: ×0,5 (el mejor club queda por debajo de un Premier de mitad de tabla).
-            league === "primeira"
-            ? 0.5
-            : // La Liga Portugal 2 maneja la mitad que la Primeira Liga: ×0,25.
-                league === "primeira2"
-                ? 0.25
-                : // La Primera Federación (3.ª división española, semiprofesional): ×0,1, muy por debajo de LaLiga Hypermotion (×0,45).
-                  league === "primeraFed1" || league === "primeraFed2"
-                  ? 0.1
-                  : league === "eredivisie"
-                    ? 0.55
-                    : league === "eersteDivisie"
-                      ? 0.32
-                      : league === "tweedeDivisie"
-                        ? 0.16
-                          : league === "mls"
-                            ? 0.65
-                            : league === "uslChampionship"
-                              ? 0.22
-                              : league === "saudiProLeague"
-                                ? 0.8
-                                : league === "saudiFirstDivision"
-                                  ? 0.3
-                      : 1;
+  const factors: Partial<Record<LeagueKind, number>> = {
+    championship: 0.2,
+    segunda: 0.2,
+    primeraNacional: 0.2,
+    leagueOne: 0.1,
+    leagueTwo: 0.05,
+    serieB: 0.18,
+    serieC: 0.08,
+    serieD: 0.04,
+    brasileiraoB: 0.18,
+    brasileiraoC: 0.08,
+    bundesliga2: 0.18,
+    bundesliga3: 0.08,
+    ligue2: 0.18,
+    ligue3: 0.07,
+    primeraBMetro: 0.07,
+    argentinaCuarta: 0.04,
+    argentinaQuinta: 0.025,
+    promocionalAmateur: 0.015,
+    primeira2: 0.1,
+    primeraFed1: 0.04,
+    primeraFed2: 0.04,
+    primeira: 0.5,
+    eredivisie: 0.55,
+    eersteDivisie: 0.12,
+    tweedeDivisie: 0.06,
+    mls: 0.65,
+    uslChampionship: 0.08,
+    saudiProLeague: 0.8,
+    saudiFirstDivision: 0.12,
+  };
+  const factor = league ? (factors[league] ?? 1) : 1;
   return Math.round(raw * factor);
 }
 
