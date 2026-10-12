@@ -1,0 +1,6 @@
+.vercel  
+.grok  
+node_modules  
+dist  
+.output 
+public/crests/aux.png 

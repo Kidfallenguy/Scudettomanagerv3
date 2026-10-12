@@ -1,0 +1,11 @@
+{
+  "title": "Scudetto: Be a manager",
+  "siteName": "Scudetto Manager",
+  "type": "x:game",
+  "card": "custom",
+  "website": {
+    "name": "Scudetto Manager",
+    "alternateName": ["Scudetto", "Scudetto Manager Game"],
+    "url": "https://scudetomanager-v2.vercel.app/"
+  }
+}
