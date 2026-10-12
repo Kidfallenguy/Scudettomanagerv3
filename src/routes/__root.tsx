@@ -3,7 +3,7 @@ import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import appCss from "../styles.css?url";
 
-const APP_NAME = "Scudetto: Be a manager - Juego de Mánager de Fútbol";
+const APP_NAME = "Scudetto: Be a Manager | Juego de mánager de fútbol";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -14,11 +14,13 @@ export const Route = createRootRoute({
       { name: "theme-color", content: "#0a0b0d" },
       {
         name: "description",
-        content: "Toma el mando en Scudetto: Be a manager. Construye tu proyecto, ficha talentos y lleva a tu club a la gloria en este juego de mánager de fútbol gratis.",
+        content:
+          "Scudetto: Be a Manager es un juego de mánager de fútbol online y gratis. Elegí tu club, armá tu equipo y dirigí cada temporada hasta la gloria.",
       },
     ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+      { rel: "canonical", href: "https://scudetomanager-v2.vercel.app/" },
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/__grok/manifest.webmanifest" },
       { rel: "apple-touch-icon", href: "/__grok/icon-180.png" },
