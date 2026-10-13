@@ -194,6 +194,11 @@ function leagueWeightOf(clubId: ClubId, ctxs: Map<ClubId, ClubContext>): number 
   return ctx ? LEAGUE_WEIGHT[ctx.league] : 0.7;
 }
 
+/** Reduce el peso de estadísticas de divisiones débiles sin hacerlas irrelevantes. */
+function divisionFactor(clubId: ClubId, ctxs: Map<ClubId, ClubContext>): number {
+  return 0.3 + 0.7 * leagueWeightOf(clubId, ctxs);
+}
+
 /** Cuánto aportó con goles, asistencias y (en defensa) la solidez del equipo. */
 function production(p: Player, ctxs: Map<ClubId, ClubContext>): number {
   const ctx = ctxs.get(p.clubId);
@@ -235,8 +240,26 @@ function minApps(players: Player[], ratio: number, floor: number): number {
   return Math.max(floor, Math.round(max * ratio));
 }
 
-function topN<T>(list: Array<Scored<T>>, n: number, tie: (t: T) => string): Array<Scored<T>> {
-  return [...list].sort((a, b) => b.score - a.score || tie(a.item).localeCompare(tie(b.item))).slice(0, n);
+function topN<T>(
+  list: Array<Scored<T>>,
+  n: number,
+  tie: (t: T) => string,
+  clubOf?: (item: T) => ClubId,
+  maxPerClub = n,
+): Array<Scored<T>> {
+  const sorted = [...list].sort((a, b) => b.score - a.score || tie(a.item).localeCompare(tie(b.item)));
+  if (!clubOf) return sorted.slice(0, n);
+  const clubCounts = new Map<ClubId, number>();
+  const selected: Array<Scored<T>> = [];
+  for (const candidate of sorted) {
+    const clubId = clubOf(candidate.item);
+    const count = clubCounts.get(clubId) ?? 0;
+    if (count >= maxPerClub) continue;
+    selected.push(candidate);
+    clubCounts.set(clubId, count + 1);
+    if (selected.length === n) break;
+  }
+  return selected;
 }
 
 /**
@@ -272,8 +295,17 @@ interface Result {
   winner: AwardNominee | null;
 }
 
-function pickFrom<T>(scored: Array<Scored<T>>, n: number, tie: (t: T) => string, toNominee: (s: Scored<T>) => AwardNominee, rng: Rng, deterministic = false): Result {
-  const nominees = topN(scored, n, tie);
+function pickFrom<T>(
+  scored: Array<Scored<T>>,
+  n: number,
+  tie: (t: T) => string,
+  toNominee: (s: Scored<T>) => AwardNominee,
+  rng: Rng,
+  deterministic = false,
+  clubOf?: (item: T) => ClubId,
+  maxPerClub = n,
+): Result {
+  const nominees = topN(scored, n, tie, clubOf, maxPerClub);
   const w = deterministic ? (nominees[0] ?? null) : drawWinner(nominees, rng);
   return { nominees: nominees.map(toNominee), winner: w ? toNominee(w) : null };
 }
@@ -287,11 +319,11 @@ function balonDeOro(save: GameSave, ctxs: Map<ClubId, ClubContext>): Result {
       const ctx = ctxs.get(p.clubId);
       const availability = 0.75 + 0.25 * Math.min(1, p.apps / Math.max(1, need * 2));
       const score =
-        production(p, ctxs) * availability +
+        production(p, ctxs) * divisionFactor(p.clubId, ctxs) * availability +
         placeScore(ctx) * 3 +
         titlePoints(ctx) * 2.5 +
-        (ctx?.titles.includes("league") ? 5 : 0) +
-        Math.max(0, p.ovr - 65) * 0.4 +
+        (ctx?.titles.includes("league") ? 5 * LEAGUE_WEIGHT[ctx.league] : 0) +
+        Math.max(0, p.ovr - 60) * 1.1 +
         minorBonus(p);
       const detail = `${p.pos === "GK" ? `${p.apps} partidos` : statLine(p)} · GRL ${p.ovr}${ctx?.titles.includes("league") ? " · campeón de liga" : ""}`;
       return { item: p, score, detail };
@@ -299,17 +331,41 @@ function balonDeOro(save: GameSave, ctxs: Map<ClubId, ClubContext>): Result {
   const rng = rngFor(save, "balon_oro");
   // Un pequeño sorteo de "impacto en los grandes partidos" para que no sea una fórmula exacta.
   for (const s of scored) s.score += (rng.float() - 0.5) * 4;
-  return pickFrom(scored, NOMINEES.balon_oro, (p) => p.id, (s) => nomineeOf(s.item, s.detail), rngFor(save, "balon_oro", 1));
+  return pickFrom(
+    scored,
+    NOMINEES.balon_oro,
+    (p) => p.id,
+    (s) => nomineeOf(s.item, s.detail),
+    rngFor(save, "balon_oro", 1),
+    false,
+    (p) => p.clubId,
+    3,
+  );
 }
 
 function botaDeOro(save: GameSave, ctxs: Map<ClubId, ClubContext>): Result {
   const all = eligiblePlayers(save, ctxs).filter((p) => p.goals > 0 && p.pos !== "GK");
-  // Como en la Bota real: los goles de las ligas más fuertes valen más.
+  // Los goles de Primera valen claramente más que los de las divisiones inferiores.
   const scored: Array<Scored<Player>> = all.map((p) => {
-    const coef = 0.75 + 0.25 * leagueWeightOf(p.clubId, ctxs);
-    return { item: p, score: p.goals * coef - p.apps * 0.0001 + p.assists * 0.0002, detail: `${p.goals} goles · ${p.apps} partidos` };
+    const ctx = ctxs.get(p.clubId);
+    const score =
+      p.goals * (0.25 + 0.75 * leagueWeightOf(p.clubId, ctxs)) +
+      Math.max(0, p.ovr - 60) * 0.35 +
+      titlePoints(ctx) * 0.4 -
+      p.apps * 0.0001 +
+      p.assists * 0.0002;
+    return { item: p, score, detail: `${p.goals} goles · ${p.apps} partidos` };
   });
-  return pickFrom(scored, NOMINEES.bota_oro, (p) => p.id, (s) => nomineeOf(s.item, s.detail), rngFor(save, "bota_oro"), true);
+  return pickFrom(
+    scored,
+    NOMINEES.bota_oro,
+    (p) => p.id,
+    (s) => nomineeOf(s.item, s.detail),
+    rngFor(save, "bota_oro"),
+    true,
+    (p) => p.clubId,
+    2,
+  );
 }
 
 function puskas(save: GameSave, ctxs: Map<ClubId, ClubContext>): Result {
@@ -328,10 +384,19 @@ function puskas(save: GameSave, ctxs: Map<ClubId, ClubContext>): Result {
       if (rng.chance(pSpectacular)) spectacular++;
     }
     const lw = leagueWeightOf(p.clubId, ctxs);
-    const score = (best * 70 + spectacular * 6 + Math.min(p.goals, 25) * 0.3) * (0.9 + 0.1 * lw);
+    const score = (best * 70 + spectacular * 6 + Math.min(p.goals, 25) * 0.3) * (0.3 + 0.7 * lw);
     scored.push({ item: p, score, detail: `${spectacular} goles destacados · ${p.goals} goles` });
   }
-  return pickFrom(scored, NOMINEES.puskas, (p) => p.id, (s) => nomineeOf(s.item, s.detail), rngFor(save, "puskas", 1));
+  return pickFrom(
+    scored,
+    NOMINEES.puskas,
+    (p) => p.id,
+    (s) => nomineeOf(s.item, s.detail),
+    rngFor(save, "puskas", 1),
+    false,
+    (p) => p.clubId,
+    2,
+  );
 }
 
 function guanteDeOro(save: GameSave, ctxs: Map<ClubId, ClubContext>): Result {
@@ -345,11 +410,12 @@ function guanteDeOro(save: GameSave, ctxs: Map<ClubId, ClubContext>): Result {
       const cleanSheets = estimateCleanSheets(p, ctx, rng);
       const prevented = ctx ? Math.max(-0.6, ctx.leagueGaPerGame - ctx.gaPerGame) * p.apps * 0.5 : 0;
       const score =
-        cleanSheets * 1.0 +
-        prevented +
+        cleanSheets * divisionFactor(p.clubId, ctxs) +
+        prevented * divisionFactor(p.clubId, ctxs) +
         p.apps * 0.1 +
         placeScore(ctx) * 2 +
         titlePoints(ctx) * 0.6 +
+        Math.max(0, p.ovr - 60) * 0.4 +
         minorBonus(p) * 0.6;
       return {
         item: p,
@@ -357,7 +423,16 @@ function guanteDeOro(save: GameSave, ctxs: Map<ClubId, ClubContext>): Result {
         detail: `${cleanSheets} porterías a cero (est.) · ${ctx ? `${ctx.ga} goles en contra en liga · ` : ""}${p.apps} partidos`,
       };
     });
-  return pickFrom(scored, NOMINEES.guante_oro, (p) => p.id, (s) => nomineeOf(s.item, s.detail), rngFor(save, "guante_oro", 1));
+  return pickFrom(
+    scored,
+    NOMINEES.guante_oro,
+    (p) => p.id,
+    (s) => nomineeOf(s.item, s.detail),
+    rngFor(save, "guante_oro", 1),
+    false,
+    (p) => p.clubId,
+    2,
+  );
 }
 
 function trofeoKopa(save: GameSave, ctxs: Map<ClubId, ClubContext>): Result {
@@ -370,17 +445,27 @@ function trofeoKopa(save: GameSave, ctxs: Map<ClubId, ClubContext>): Result {
       const ctx = ctxs.get(p.clubId);
       const growth = Math.max(-2, Math.min(8, p.ovr - (p.seasonStartOvr || p.ovr)));
       const score =
-        production(p, ctxs) +
+        production(p, ctxs) * divisionFactor(p.clubId, ctxs) +
         p.apps * 0.12 +
         growth * 0.8 +
         Math.max(0, p.pot - p.ovr) * 0.05 +
         placeScore(ctx) * 1.5 +
         titlePoints(ctx) * 0.8 +
+        Math.max(0, p.ovr - 60) * 0.9 +
         minorBonus(p) * 0.5 +
         (rng.float() - 0.5) * 2;
       return { item: p, score, detail: `${p.age} años · ${p.pos === "GK" ? `${p.apps} partidos` : statLine(p)}` };
     });
-  return pickFrom(scored, NOMINEES.kopa, (p) => p.id, (s) => nomineeOf(s.item, s.detail), rngFor(save, "kopa", 1));
+  return pickFrom(
+    scored,
+    NOMINEES.kopa,
+    (p) => p.id,
+    (s) => nomineeOf(s.item, s.detail),
+    rngFor(save, "kopa", 1),
+    false,
+    (p) => p.clubId,
+    2,
+  );
 }
 
 function dtDelAnio(save: GameSave, ctxs: Map<ClubId, ClubContext>): Result {
@@ -409,11 +494,12 @@ function dtDelAnio(save: GameSave, ctxs: Map<ClubId, ClubContext>): Result {
       objText = ` · objetivos ${goals.filter((g) => g.state === "met").length}/${goals.length}`;
     }
     const score =
-      placeScore(ctx) * 20 * (0.85 + 0.15 * lw) +
+      (placeScore(ctx) * 20 * (0.85 + 0.15 * lw) +
       over +
       titles +
       (ctx.played > 0 ? (ctx.won / ctx.played) * 8 : 0) +
-      objectives;
+      objectives) *
+      (0.3 + 0.7 * lw);
     scored.push({
       item: ctx,
       score,

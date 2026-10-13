@@ -66,9 +66,10 @@ test("el calendario avanza una jornada por llamada y registra asistentes por com
   ]);
 });
 
-test("los premios mundiales incluyen nominados de distintas ligas", () => {
+test("los premios mundiales priorizan media y división sobre estadísticas infladas", () => {
   const save = createCareer("tpa_glew", 20261013);
   const leagues = ["serieA", "promocionalAmateur"] as const;
+  for (const player of save.players) player.apps = 0;
   for (const league of leagues) {
     const rows = save.leagueTables[league];
     rows.forEach((row) => {
@@ -78,6 +79,8 @@ test("los premios mundiales incluyen nominados de distintas ligas", () => {
       const index = rows.indexOf(row);
       player.age = 19;
       player.apps = 20;
+      player.ovr = 80;
+      player.seasonStartOvr = 80;
       player.goals = league === "serieA" ? 75 - index * 5 : 100 - index * 10;
       player.assists = 5;
     });
@@ -85,15 +88,14 @@ test("los premios mundiales incluyen nominados de distintas ligas", () => {
 
   selectSeasonAwards(save);
 
-  const clubsByLeague = leagues.map((league) => new Set(domesticIds(league)));
   for (const kind of ["bota_oro", "kopa"] as const) {
     const award = save.awards.find((candidate) => candidate.season === save.season && candidate.kind === kind);
     assert.ok(award);
-    assert.ok(
-      clubsByLeague.every((leagueClubs) =>
-        award.nominees.some((nominee) => leagueClubs.has(nominee.clubId)),
-      ),
-      `${kind} debe incluir candidatos de distintas ligas`,
-    );
+    assert.ok(domesticIds("serieA").includes(award.nominees[0]!.clubId), `${kind} debe priorizar Serie A`);
+    const clubCounts = new Map<string, number>();
+    for (const nominee of award.nominees) {
+      clubCounts.set(nominee.clubId, (clubCounts.get(nominee.clubId) ?? 0) + 1);
+    }
+    assert.ok([...clubCounts.values()].every((count) => count <= 2), `${kind} no debe concentrarse en un club`);
   }
 });
