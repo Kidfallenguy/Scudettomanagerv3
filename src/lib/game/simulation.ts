@@ -14,17 +14,6 @@ export function shouldUseDetailedSimulation(
   return league === (managedLeague ?? playableLeague(clubById(save.clubId).league));
 }
 
-function randomScore(rng: Rng): number {
-  const roll = rng.int(0, 99);
-  if (roll < 22) return 0;
-  if (roll < 52) return 1;
-  if (roll < 77) return 2;
-  if (roll < 91) return 3;
-  if (roll < 97) return 4;
-  if (roll < 99) return 5;
-  return 6;
-}
-
 function fixtureHash(id: string): number {
   let hash = 2166136261;
   for (let index = 0; index < id.length; index += 1) {
@@ -33,11 +22,14 @@ function fixtureHash(id: string): number {
   return hash >>> 0;
 }
 
-/** Marcador pseudoaleatorio ligero para ligas secundarias; conserva la reproducibilidad de la carrera. */
+/** Marcador ligero que usa el prestigio como grandeza del club, sin consultar ni simular sus plantillas. */
 export function simulateQuickMatch(fixture: Fixture, seed: number): MatchResult {
   const rng = new Rng(seed ^ fixtureHash(fixture.id));
-  const homeGoals = randomScore(rng);
-  const awayGoals = randomScore(rng);
+  const homePrestige = clubById(fixture.homeId).prestige;
+  const awayPrestige = clubById(fixture.awayId).prestige;
+  const strengthFactor = Math.exp(Math.max(-24, Math.min(24, homePrestige - awayPrestige)) * 0.03);
+  const homeGoals = Math.min(6, rng.poisson(1.45 * strengthFactor));
+  const awayGoals = Math.min(6, rng.poisson(1.1 / strengthFactor));
   const emptyStats = { shots: 0, onTarget: 0, possession: 50, corners: 0, fouls: 0, yellows: 0, reds: 0 };
 
   return {

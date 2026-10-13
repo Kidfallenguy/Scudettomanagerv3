@@ -63,16 +63,15 @@ describe("career match simulation", () => {
     }
   });
 
-  it("produces deterministic random quick scores without consulting player squads", () => {
-    const match = fixture(
-      domesticCompetition(lowerLeagueClub.league),
-      lowerLeagueClub.id,
-      otherLowerLeagueClub.id,
-    );
+  it("keeps quick scores deterministic and favors the more prestigious club", () => {
+    const leagueOneClubs = CLUBS.filter((club) => club.league === managerClub.league);
+    const strongest = [...leagueOneClubs].sort((a, b) => b.prestige - a.prestige)[0]!;
+    const weakest = [...leagueOneClubs].sort((a, b) => a.prestige - b.prestige)[0]!;
+    const match = fixture(domesticCompetition(strongest.league), strongest.id, weakest.id);
     const sameDayFixture = fixture(
-      domesticCompetition(lowerLeagueClub.league),
-      otherLowerLeagueClub.id,
-      lowerLeagueClub.id,
+      domesticCompetition(strongest.league),
+      weakest.id,
+      strongest.id,
     );
     const first = simulateQuickMatch(match, 7331);
     const second = simulateQuickMatch(match, 7331);
@@ -83,9 +82,23 @@ describe("career match simulation", () => {
         return `${result.homeGoals}-${result.awayGoals}`;
       }),
     );
+    let strongerWins = 0;
+    let strongerLosses = 0;
+    for (let index = 0; index < 500; index += 1) {
+      match.id = `stronger-home-${index}`;
+      const homeFavorite = simulateQuickMatch(match, 7331);
+      if (homeFavorite.homeGoals > homeFavorite.awayGoals) strongerWins += 1;
+      if (homeFavorite.homeGoals < homeFavorite.awayGoals) strongerLosses += 1;
+
+      sameDayFixture.id = `stronger-away-${index}`;
+      const awayFavorite = simulateQuickMatch(sameDayFixture, 7331);
+      if (awayFavorite.awayGoals > awayFavorite.homeGoals) strongerWins += 1;
+      if (awayFavorite.awayGoals < awayFavorite.homeGoals) strongerLosses += 1;
+    }
 
     assert.deepEqual(first, second);
     assert.ok(uniqueScores.size > 20);
+    assert.ok(strongerWins > strongerLosses * 2);
     assert.ok(first.homeGoals >= 0 && first.homeGoals <= 6);
     assert.ok(first.awayGoals >= 0 && first.awayGoals <= 6);
     assert.deepEqual(first.events, []);
