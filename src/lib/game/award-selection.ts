@@ -1,7 +1,7 @@
 import { ensureSeasonAwards, findAward, setAwardResult, type AwardKind, type AwardNominee } from "./awards";
 import { clubById } from "./clubs";
 import { Rng } from "./rng";
-import type { ClubId, GameSave, Player, PlayableLeagueId, Pos, Standing } from "./types";
+import type { ClubId, GameSave, LeagueKind, Player, PlayableLeagueId, Pos, Standing } from "./types";
 import { sortTable } from "./world";
 
 // ---------------------------------------------------------------------------
@@ -9,8 +9,8 @@ import { sortTable } from "./world";
 //
 // Todo sale de lo que pasó en la temporada: goles, asistencias y partidos de cada jugador, la
 // tabla final de su liga, los títulos de su club y (para el DT) los objetivos de la dirigencia.
-// Los jugadores y DT se comparan en todo el mundo; la fuerza de cada liga ajusta el peso de
-// estadísticas, resultados y títulos.
+// El Balón de Oro compara por GRL las plantillas de primeras divisiones de todo el mundo; las
+// estadísticas, resultados y títulos de ligas simuladas completan esa valoración.
 // El ganador no es siempre el primero de la lista: se sortea entre los
 // nominados con más chances para el que tuvo la mejor temporada (salvo la Bota de Oro, que es
 // puramente de goles). Todo es determinista: depende de la semilla de la partida y la temporada.
@@ -71,6 +71,20 @@ const LEAGUE_WEIGHT: Record<PlayableLeagueId, number> = {
   saudiProLeague: 0.7,
   saudiFirstDivision: 0.4,
 };
+
+const TOP_FLIGHT_LEAGUES = new Set<LeagueKind>([
+  "premier",
+  "serieA",
+  "laliga",
+  "bundesliga",
+  "ligue1",
+  "argentina",
+  "brasileirao",
+  "primeira",
+  "eredivisie",
+  "mls",
+  "saudiProLeague",
+]);
 
 /** Importancia de cada título de la temporada para el Balón de Oro. */
 const TITLE_POINTS = { league: 3, coppa: 1, ucl: 6, libertadores: 4, uel: 2, uecl: 1.2, sudamericana: 1.5 } as const;
@@ -311,21 +325,23 @@ function pickFrom<T>(
 }
 
 function balonDeOro(save: GameSave, ctxs: Map<ClubId, ClubContext>): Result {
-  const all = eligiblePlayers(save, ctxs);
-  const need = minApps(all, 0.4, 8);
-  const scored: Array<Scored<Player>> = all
-    .filter((p) => p.apps >= need)
+  const scored: Array<Scored<Player>> = save.players
+    .filter((p) => {
+      const club = clubById(p.clubId);
+      const league = save.divisions?.[p.clubId] ?? club.league;
+      return !club.ghost && TOP_FLIGHT_LEAGUES.has(league);
+    })
     .map((p) => {
       const ctx = ctxs.get(p.clubId);
-      const availability = 0.75 + 0.25 * Math.min(1, p.apps / Math.max(1, need * 2));
-      const score =
-        production(p, ctxs) * divisionFactor(p.clubId, ctxs) * availability +
-        placeScore(ctx) * 3 +
-        titlePoints(ctx) * 2.5 +
-        (ctx?.titles.includes("league") ? 5 * LEAGUE_WEIGHT[ctx.league] : 0) +
-        Math.max(0, p.ovr - 60) * 1.1 +
-        minorBonus(p);
-      const detail = `${p.pos === "GK" ? `${p.apps} partidos` : statLine(p)} · GRL ${p.ovr}${ctx?.titles.includes("league") ? " · campeón de liga" : ""}`;
+      const availability = 0.75 + 0.25 * Math.min(1, p.apps / 30);
+      const seasonPerformance = ctx?.played
+        ? Math.min(28, production(p, ctxs) * divisionFactor(p.clubId, ctxs) * availability * 0.35) +
+          placeScore(ctx) * 3 +
+          titlePoints(ctx) * 1.5 +
+          (ctx.titles.includes("league") ? 5 * LEAGUE_WEIGHT[ctx.league] : 0)
+        : 0;
+      const score = p.ovr * 5 + seasonPerformance + minorBonus(p);
+      const detail = `GRL ${p.ovr} · ${p.pos === "GK" ? `${p.apps} partidos` : statLine(p)}${ctx?.titles.includes("league") ? " · campeón de liga" : ""}`;
       return { item: p, score, detail };
     });
   const rng = rngFor(save, "balon_oro");
@@ -543,7 +559,7 @@ export function selectSeasonAwards(save: GameSave): void {
   const ctxs = buildContexts(save);
   for (const kind of Object.keys(SELECTORS) as AwardKind[]) {
     const current = findAward(save.awards, save.season, kind);
-    if (current?.winner) continue;
+    if (current?.winner && kind !== "balon_oro") continue;
     const result = SELECTORS[kind](save, ctxs);
     save.awards = setAwardResult(save.awards, save.season, kind, result);
   }

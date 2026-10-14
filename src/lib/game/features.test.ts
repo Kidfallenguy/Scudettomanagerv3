@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { selectSeasonAwards } from "./award-selection";
-import { domesticIds } from "./clubs";
+import { clubById, domesticIds } from "./clubs";
 import { normalizePotential } from "./potential";
 import { competitionTopAssists } from "./selectors";
 import { useGame } from "./store";
@@ -98,4 +98,71 @@ test("los premios mundiales priorizan media y división sobre estadísticas infl
     }
     assert.ok([...clubCounts.values()].every((count) => count <= 2), `${kind} no debe concentrarse en un club`);
   }
+});
+
+test("el Balón de Oro incluye la base global de primeras divisiones aunque no haya partidos simulados", () => {
+  const save = createCareer("tpa_glew", 20261014);
+  for (const player of save.players) {
+    player.apps = 0;
+    player.goals = 0;
+    player.assists = 0;
+    player.ovr = 60;
+    player.seasonStartOvr = 60;
+    player.form = 0;
+  }
+
+  const premierPlayer = save.players.find((player) =>
+    domesticIds("premier").includes(player.clubId),
+  );
+  const secondDivisionPlayer = save.players.find((player) =>
+    domesticIds("championship").includes(player.clubId),
+  );
+  const userPlayer = save.players.find((player) => player.clubId === save.clubId);
+  assert.ok(premierPlayer);
+  assert.ok(secondDivisionPlayer);
+  assert.ok(userPlayer);
+  premierPlayer.ovr = 95;
+  premierPlayer.seasonStartOvr = 95;
+  secondDivisionPlayer.ovr = 100;
+  secondDivisionPlayer.seasonStartOvr = 100;
+  userPlayer.ovr = 99;
+  userPlayer.seasonStartOvr = 99;
+
+  const savedAward = save.awards.find(
+    (candidate) => candidate.season === save.season && candidate.kind === "balon_oro",
+  );
+  assert.ok(savedAward);
+  savedAward.winner = {
+    id: secondDivisionPlayer.id,
+    name: secondDivisionPlayer.name,
+    clubId: secondDivisionPlayer.clubId,
+  };
+
+  selectSeasonAwards(save);
+
+  const award = save.awards.find(
+    (candidate) => candidate.season === save.season && candidate.kind === "balon_oro",
+  );
+  assert.ok(award);
+  assert.equal(award.nominees[0]?.id, premierPlayer.id);
+  assert.ok(award.nominees.some((nominee) => nominee.id === premierPlayer.id));
+  assert.ok(
+    award.nominees.every((nominee) => {
+      const league = save.divisions?.[nominee.clubId] ?? clubById(nominee.clubId).league;
+      return [
+        "premier",
+        "serieA",
+        "laliga",
+        "bundesliga",
+        "ligue1",
+        "argentina",
+        "brasileirao",
+        "primeira",
+        "eredivisie",
+        "mls",
+        "saudiProLeague",
+      ].includes(league);
+    }),
+  );
+  assert.ok(!award.nominees.some((nominee) => nominee.clubId === save.clubId));
 });
