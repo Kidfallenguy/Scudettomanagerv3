@@ -19,7 +19,7 @@ import { pickBench, pickXi } from "./tactics";
 import { OFFSEASON_DAYS, advanceTraining, trainingPopup } from "./training";
 import { resolveLoans, spawnWonderkids } from "./transfers";
 import { clamp, playerValue, playerWage, uid } from "./format";
-import { assembleContinentals, buildSeasonSchedule, prizeForPlace, rankedByPrestige, sortTable } from "./world";
+import { assembleContinentals, buildSeasonSchedule, rankedByPrestige, sortTable } from "./world";
 import { assembleMundial, intercontinentalPair, isMundialSeason, transatlanticaPair } from "./mundial";
 import type { GameSave, Player } from "./types";
 
@@ -87,9 +87,6 @@ export function evolveSeason(prev: GameSave): GameSave {
   const prevLeague = clubById(prev.clubId).league;
   const prevUserLeague = playableLeague(prevLeague);
   const table = sortTable(prev.leagueTables?.[prevUserLeague] ?? prev.standings);
-  const place = table.findIndex((r) => r.clubId === prev.clubId);
-  const leaguePrize = prizeForPlace(place, prevLeague);
-
   // El verano también cuenta para un ciclo de entrenamiento en marcha: si termina, se aplica
   // antes de que los jugadores envejezcan.
   const trainingEndedInSummer = advanceTraining(prev, OFFSEASON_DAYS, new Rng(prev.seed + prev.season * 41 + 5), false);
@@ -408,7 +405,7 @@ export function evolveSeason(prev: GameSave): GameSave {
     lineup: nextLineup,
     bench: pickBench(squad, nextLineup),
   };
-  next.budget = prev.budget + divisionBudgetDelta + leaguePrize + seasonBudgetGrant(prevLeague);
+  next.budget = prev.budget + divisionBudgetDelta + seasonBudgetGrant(prevLeague);
   next.season = prev.season + 1;
   // Premios de la nueva temporada (vacíos); los de temporadas anteriores se conservan.
   ensureSeasonAwards(next);

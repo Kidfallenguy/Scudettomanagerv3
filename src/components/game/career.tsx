@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { ClubCrest } from "@/components/game/crest";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
-import { careerSeasons, careerTotals, untrackedTrophySeasons } from "@/lib/game/career";
+import { careerClubName, careerSeasons, careerTotals, untrackedTrophySeasons } from "@/lib/game/career";
 import { clubById } from "@/lib/game/clubs";
 import { seasonLabel } from "@/lib/game/format";
 import { useGame } from "@/lib/game/store";
@@ -65,7 +65,7 @@ export function CareerView() {
               return (
                 <li key={id} className="flex items-center gap-2 rounded-full bg-elevated px-3 py-1.5 text-sm">
                   <ClubCrest club={c} size={20} />
-                  {c.name}
+                  {careerClubName(save, id)}
                 </li>
               );
             })}
@@ -92,7 +92,7 @@ export function CareerView() {
                   <div className="min-w-0 flex-1">
                     <p className="font-display text-xl font-semibold leading-tight">{seasonLabel(r.season)}</p>
                     <p className="truncate text-sm text-fg-muted">
-                      {club.name}
+                      {careerClubName(save, r.clubId)}
                       {r.live ? (r.finished ? " · temporada terminada" : " · en curso") : ""}
                       {r.sacked ? " · despedido" : ""}
                     </p>

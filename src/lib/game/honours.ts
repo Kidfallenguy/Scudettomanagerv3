@@ -40,6 +40,7 @@ export interface CareerTrophy {
   season: number;
   label: string;
   prize?: number;
+  clubId?: string;
 }
 
 export type HistoricalCoverageStatus = "complete" | "partial" | "pending";
@@ -89,6 +90,14 @@ export function honourLabel(kind: HonourKind, league: LeagueKind): string {
   }
   if (league === "serieB") {
     if (kind === "scudetto") return "Serie B";
+    if (kind === "coppa") return "Coppa Italia";
+  }
+  if (league === "serieC") {
+    if (kind === "scudetto") return "Serie C";
+    if (kind === "coppa") return "Coppa Italia";
+  }
+  if (league === "serieD") {
+    if (kind === "scudetto") return "Serie D";
     if (kind === "coppa") return "Coppa Italia";
   }
   if (league === "leagueOne") {
@@ -599,6 +608,7 @@ export function honourKinds(league: LeagueKind): HonourKind[] {
   }
   if (league === "serieA") return ["scudetto", "coppa", "supercoppa", ...EUROPEAN_HONOURS];
   if (league === "serieB") return ["scudetto", "coppa", ...EUROPEAN_HONOURS];
+  if (league === "serieC" || league === "serieD") return ["scudetto", "coppa"];
   if (league === "premier" || league === "championship" || league === "leagueOne" || league === "leagueTwo") {
     return ["scudetto", "coppa", "carabao", ...(league === "premier" ? ["supercoppa" as const] : []), ...EUROPEAN_HONOURS];
   }
@@ -692,6 +702,16 @@ export function trophyLabel(kind: HonourKind, season: number, league?: LeagueKin
   if (league === "serieB") {
     const map: Record<HonourKind, string> = {
       scudetto: `Serie B ${year}`,
+      coppa: `Coppa Italia ${year}`,
+      supercoppa: `Supercoppa ${season}`,
+      ...extra,
+    };
+    return map[kind];
+  }
+  if (league === "serieC" || league === "serieD") {
+    const name = league === "serieC" ? "Serie C" : "Serie D";
+    const map: Record<HonourKind, string> = {
+      scudetto: `${name} ${year}`,
       coppa: `Coppa Italia ${year}`,
       supercoppa: `Supercoppa ${season}`,
       ...extra,

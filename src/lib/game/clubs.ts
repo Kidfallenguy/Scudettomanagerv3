@@ -2110,6 +2110,8 @@ const DIVISION_KINDS: Division[] = [
   "leagueTwo",
   "serieA",
   "serieB",
+  "serieC",
+  "serieD",
   "laliga",
   "segunda",
   "primeraFed1",
@@ -2153,7 +2155,7 @@ export const ENGLISH_IDS: string[] = uniqueIds(
 export const ARGENTINE_IDS: string[] = uniqueIds(
   CLUBS.filter((c) => !c.ghost && ["argentina", "primeraNacional", "primeraBMetro", "argentinaCuarta", "argentinaQuinta", "promocionalAmateur"].includes(c.league)).map((c) => c.id),
 );
-/** Todos los clubes que juegan (o pueden jugar) en las dos primeras divisiones italianas. */
+/** Todos los clubes italianos que juegan (o pueden jugar) en las cuatro divisiones incluidas. */
 export const ITALIAN_IDS: string[] = uniqueIds(
   CLUBS.filter((c) => !c.ghost && (c.league === "serieA" || c.league === "serieB" || c.league === "serieC" || c.league === "serieD")).map((c) => c.id),
 );

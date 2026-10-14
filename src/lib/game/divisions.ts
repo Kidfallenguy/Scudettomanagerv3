@@ -346,6 +346,38 @@ const PAIRS: DivisionPair[] = [
     rngSalt: [211, 13],
   },
   {
+    // Serie B ↔ Serie C: los tres primeros de la Serie C suben y los tres últimos de la Serie B bajan.
+    top: "serieB",
+    second: "serieC",
+    topTitle: "la Serie B",
+    secondTitle: "la Serie C",
+    finalVenue: "campo neutral",
+    cups: "Esta temporada compites en la Serie B y la Coppa Italia.",
+    secondDrop: 0,
+    playoffName: "Playoff de ascenso",
+    playoffWord: "playoff",
+    parachute: 2_000_000,
+    promotionBonus: 2_000_000,
+    newsOnlyForCountry: true,
+    rngSalt: [217, 17],
+  },
+  {
+    // Serie C ↔ Serie D: dos ascensos directos y dos descensos para conservar el tamaño de ambas divisiones.
+    top: "serieC",
+    second: "serieD",
+    topTitle: "la Serie C",
+    secondTitle: "la Serie D",
+    finalVenue: "campo neutral",
+    cups: "Esta temporada compites en la Serie C y la Coppa Italia.",
+    secondDrop: 0,
+    playoffName: "Playoff de ascenso",
+    playoffWord: "playoff",
+    parachute: 500_000,
+    promotionBonus: 500_000,
+    newsOnlyForCountry: true,
+    rngSalt: [219, 19],
+  },
+  {
     // Bundesliga ↔ 2. Bundesliga: misma mecánica (la 3. Liga no es jugable, así que nadie baja de la 2. Bundesliga).
     top: "bundesliga",
     second: "bundesliga2",

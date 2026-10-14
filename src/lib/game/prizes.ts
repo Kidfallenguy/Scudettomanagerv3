@@ -49,6 +49,8 @@ export function trophyPrize(kind: HonourKind, league: LeagueKind): number {
     if (league === "primeraFed1" || league === "primeraFed2") return 1_200_000;
     // Campeón de Serie B: el premio real es el ascenso; el cheque es menor.
     if (league === "serieB") return 4_000_000;
+    if (league === "serieC") return 1_500_000;
+    if (league === "serieD") return 300_000;
     // Campeón de la 2. Bundesliga: el premio real es el ascenso; el cheque es menor.
     if (league === "bundesliga2") return 4_500_000;
     // Campeón de la 3. Liga: el premio real es el ascenso a la 2. Bundesliga; el cheque es mucho menor.
@@ -96,6 +98,8 @@ export function trophyPrize(kind: HonourKind, league: LeagueKind): number {
     if (league === "primeraFed1" || league === "primeraFed2") return 4_000_000;
     // Coppa Italia ganada por un club de Serie B: premio menor que en Serie A.
     if (league === "serieB") return 3_000_000;
+    if (league === "serieC") return 1_500_000;
+    if (league === "serieD") return 500_000;
     if (league === "leagueOne") return 4_000_000;
     if (league === "leagueTwo") return 2_000_000;
     // DFB-Pokal ganada por un club de la 2. Bundesliga: premio algo menor que en la Bundesliga.
@@ -162,6 +166,8 @@ export function trophyName(kind: HonourKind, league: LeagueKind): string {
     if (kind === "scudetto") return "la Serie B";
     if (kind === "coppa") return "la Coppa Italia";
   }
+  if (league === "serieC" && kind === "scudetto") return "la Serie C";
+  if (league === "serieD" && kind === "scudetto") return "la Serie D";
   if (league === "bundesliga2") {
     if (kind === "scudetto") return "la 2. Bundesliga";
     if (kind === "coppa") return "la DFB-Pokal";

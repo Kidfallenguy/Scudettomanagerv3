@@ -79,6 +79,14 @@ export function Cabinet() {
             {trophyKinds.map((kind) => {
               const countKnown = !historyCoverage || historyCoverage.status === "complete" || historyCoverage.knownKinds.includes(kind);
               const trophyCount = honours[kind] ?? 0;
+              const currentCareerCount = careerTrophies.filter(
+                (trophy) => trophy.kind === kind && trophy.clubId === clubId,
+              ).length;
+              const displayCount = countKnown
+                ? String(trophyCount)
+                : currentCareerCount > 0
+                  ? `≥${currentCareerCount}`
+                  : "—";
               return (
                 <li key={kind} className="rounded-2xl bg-surface p-4 shadow-[var(--shadow-border)]">
                   <div className="flex items-center gap-2 text-fg-muted">
@@ -86,10 +94,14 @@ export function Cabinet() {
                     <p className="text-[11px] uppercase tracking-wide">{honourLabel(kind, league)}</p>
                   </div>
                   <p className="mt-2 font-display text-5xl font-semibold tabular-nums leading-none">
-                    {countKnown ? trophyCount : 0}
+                    {displayCount}
                   </p>
                   <p className="mt-2 text-xs text-fg-muted">
-                    {honourLabel(kind, league)} ×{countKnown ? trophyCount : 0}
+                    {countKnown
+                      ? `${honourLabel(kind, league)} ×${trophyCount}`
+                      : currentCareerCount > 0
+                        ? `Al menos ${currentCareerCount} en esta carrera · historial previo incompleto`
+                        : "Sin recuento histórico confirmado"}
                   </p>
                 </li>
               );

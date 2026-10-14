@@ -53,6 +53,11 @@ export interface CareerTotals {
   titles: number;
 }
 
+export function careerClubName(save: GameSave, clubId: ClubId): string {
+  const identity = save.clubIdentity;
+  return identity?.targetClubId === clubId ? identity.name : clubById(clubId).name;
+}
+
 /** Registro de la temporada del save tal como está ahora mismo. */
 export function buildSeasonRecord(save: GameSave): CareerSeasonRecord {
   const matches = userMatchHistory(save);

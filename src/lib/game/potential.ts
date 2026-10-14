@@ -205,7 +205,11 @@ export function seasonGrowth(p: Player, rng: Rng): Player {
     const well = isGoodSeason(p);
     const smash = isSmashSeason(p);
     const onLoan = Boolean(p.loanFrom);
-    const extra = smash ? rng.int(1, 3) : well ? rng.int(onLoan ? 1 : 0, 2) : rng.int(onLoan ? 1 : 0, 1);
+    const extra = smash
+      ? rng.int(onLoan ? 3 : 2, onLoan ? 5 : 4)
+      : well
+        ? rng.int(onLoan ? 2 : 1, 3)
+        : rng.int(onLoan ? 2 : 1, 2);
     growPlayer(aged, extra, rng, { ignoreCap: true });
     const gained = aged.ovr - (p.seasonStartOvr || p.ovr);
     const max = seasonMaxGain(p.seasonStartOvr || p.ovr);

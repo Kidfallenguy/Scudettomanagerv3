@@ -2260,6 +2260,7 @@ export function awardTrophy(save: GameSave, kind: HonourKind, winnerId: string) 
     season: save.season,
     label,
     prize,
+    clubId: save.clubId,
   });
   const body = `${club.name} levanta ${label}. Premio: ${formatMoney(prize)}.${sponsorBonus > 0 ? ` Bonus de patrocinadores: ${formatMoney(sponsorBonus)}.` : ""}${titleBonus > 0 ? ` Bonus por título a la plantilla: ${formatMoney(titleBonus)}.` : ""}`;
   save.news.unshift({ id: uid("n"), week: save.week, tone: "good", title, body });
