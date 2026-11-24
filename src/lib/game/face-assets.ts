@@ -280,6 +280,19 @@ export function playerFaceUrl(
   );
 }
 
+export function cachePlayerPortrait(
+  player: Pick<Player, "name" | "portraitUrl"> &
+    Partial<Pick<Player, "id" | "clubId" | "loanFrom">>,
+) {
+  if (player.portraitUrl) return;
+  const source = playerFaceUrl({
+    ...player,
+    clubId: player.loanFrom ?? player.clubId,
+  });
+  if (source !== DEFAULT_PLAYER_FACE_URL) player.portraitUrl = source;
+}
+
+
 export function hasPlayerPhoto(
   player: Pick<Player, "name" | "portraitUrl"> &
     Partial<Pick<Player, "id" | "clubId">>,

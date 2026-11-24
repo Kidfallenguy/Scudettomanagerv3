@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  cachePlayerPortrait,
+  playerFaceUrl,
   regenFaceUrl,
   realPlayerFace,
   wonderkidAtlasTile,
@@ -39,6 +41,22 @@ test("Wonderkid player faces are stable and invalid atlas tiles are rejected", (
     wonderkidAtlasTile("/player-faces/wonderkids/atlas-0001.webp#64"),
     null,
   );
+});
+
+test("player portraits remain tied to their original club after a transfer", () => {
+  const player = {
+    id: "b2_fcn-1",
+    name: "Adam Markhiev",
+    clubId: "b2_fcn",
+    portraitUrl: undefined,
+  };
+  const originalFace = playerFaceUrl(player);
+
+  cachePlayerPortrait(player);
+  player.clubId = "b2_dsc";
+
+  assert.notEqual(originalFace, "/player-faces/bajogrlfaces.png");
+  assert.equal(playerFaceUrl(player), originalFace);
 });
 
 test("New Gen prospects resolve their submitted face assets, including Daniel Curti's photo", () => {

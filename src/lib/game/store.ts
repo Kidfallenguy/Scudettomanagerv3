@@ -41,6 +41,7 @@ import {
   uid,
 } from "./format";
 import { historicalFor } from "./honours";
+import { cachePlayerPortrait } from "./face-assets";
 import { growPlayer, normalizePotential } from "./potential";
 import { managerOffers, managerReport } from "./manager";
 import { Rng } from "./rng";
@@ -175,7 +176,6 @@ import type {
   MatchResult,
   Mentality,
   NewsItem,
-  NumberColor,
   Player,
   Pos,
   Screen,
@@ -245,7 +245,6 @@ type Actions = {
   abandon: () => void;
   setFormation: (id: FormationId) => void;
   setMentality: (m: Mentality) => void;
-  setNumberColor: (c: NumberColor) => void;
   setLineupSlot: (index: number, playerId: string) => string | null;
   autoFill: () => void;
   toggleBench: (playerId: string) => string | null;
@@ -505,7 +504,6 @@ export function emptyShell(): GameSave {
       mentality: "balanced",
       lineup: [],
       bench: [],
-      numberColor: "auto",
     },
     budget: 0,
     news: [],
@@ -645,7 +643,6 @@ function pickData(s: GameSave, normalizePlayers = true): GameSave {
       lineup: s.tactics?.lineup ?? [],
       // Partidas viejas no tienen banquillo: se arma solo más abajo.
       bench: Array.isArray(s.tactics?.bench) ? s.tactics.bench : [],
-      numberColor: s.tactics?.numberColor ?? "auto",
     },
     budget: s.budget ?? 0,
     news: normalizeNews(s.news, s.season, s.calendar),
@@ -2091,13 +2088,11 @@ export const useGame = create<GameStore>()(
       setMentality: (mentality) => {
         set({ tactics: { ...get().tactics, mentality } });
       },
-      setNumberColor: (numberColor) => {
-        set({ tactics: { ...get().tactics, numberColor } });
-      },
       setLineupSlot: (index, playerId) => {
         const s = get();
         const p = s.players.find((x) => x.id === playerId);
         if (!p) return "Jugador no encontrado.";
+        if (p.clubId !== s.clubId) return "Ese jugador no pertenece a tu plantilla.";
         if (isUnavailable(p)) {
           return unavailableMessage(p);
         }
@@ -2120,7 +2115,7 @@ export const useGame = create<GameStore>()(
           if (other && otherSlot && !canPlaySlot(other.pos, otherSlot.pos)) {
             return `${other.name} no juega en esa posición (${POS_LABEL[other.pos]}), no se puede cambiar de lugar con ${p.name}.`;
           }
-          tactics.lineup[existing] = otherId ?? playerId;
+          tactics.lineup[existing] = otherId ?? "";
         }
         const displaced = existing >= 0 ? undefined : tactics.lineup[index];
         tactics.lineup[index] = playerId;
@@ -2473,6 +2468,7 @@ export const useGame = create<GameStore>()(
         s.budget += fee;
         creditClub(s, buyer.id, -gross);
         logTransfer(s, p, s.clubId, buyer.id, "sale", gross);
+        cachePlayerPortrait(p);
         ensurePos(p);
         p.clubId = buyer.id;
         p.listed = false;
@@ -2598,6 +2594,7 @@ export const useGame = create<GameStore>()(
         s.budget -= fee;
         creditClub(s, origin, fee);
         logTransfer(s, p, origin, s.clubId, "loan", fee);
+        cachePlayerPortrait(p);
         p.loanFrom = origin;
         p.clubId = s.clubId;
         p.loanSeasons = seasons;

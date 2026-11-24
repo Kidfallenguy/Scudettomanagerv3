@@ -117,8 +117,6 @@ export type LeagueKind =
   | "concacaf"
   | "ofc";
 
-export type NumberColor = "auto" | "white" | "black" | "gold";
-
 export interface Club {
   id: ClubId;
   name: string;
@@ -500,7 +498,6 @@ export interface Tactics {
   lineup: string[];
   /** Suplentes convocados para el partido (hasta BENCH_SIZE). Pueden entrar a lo largo del encuentro. */
   bench: string[];
-  numberColor: NumberColor;
 }
 
 export interface NewsItem {

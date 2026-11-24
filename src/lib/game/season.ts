@@ -488,7 +488,7 @@ export function evolveSeason(prev: GameSave): GameSave {
   const nextLineup = pickXi(squad, prev.tactics.formation);
   next.tactics = {
     ...prev.tactics,
-    numberColor: prev.tactics.numberColor ?? "auto",
+
     lineup: nextLineup,
     bench: pickBench(squad, nextLineup),
   };

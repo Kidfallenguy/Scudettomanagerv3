@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { clubById } from "@/lib/game/clubs";
 import { POS_LABEL, lastName, ovrClass } from "@/lib/game/format";
-import { NUMBER_COLOR_OPTIONS } from "@/lib/game/kit";
 import {
   BENCH_SIZE,
   FORMATION_IDS,
@@ -28,7 +27,7 @@ import {
   xiRating,
 } from "@/lib/game/tactics";
 import { useGame } from "@/lib/game/store";
-import type { FormationId, Mentality, NumberColor, Player } from "@/lib/game/types";
+import type { FormationId, Mentality, Player } from "@/lib/game/types";
 
 export function TacticsView() {
   const clubId = useGame((s) => s.clubId);
@@ -37,7 +36,6 @@ export function TacticsView() {
   const pending = useGame((s) => s.pendingFixtureId);
   const setFormation = useGame((s) => s.setFormation);
   const setMentality = useGame((s) => s.setMentality);
-  const setNumberColor = useGame((s) => s.setNumberColor);
   const setLineupSlot = useGame((s) => s.setLineupSlot);
   const autoFill = useGame((s) => s.autoFill);
   const toggleBench = useGame((s) => s.toggleBench);
@@ -160,24 +158,6 @@ export function TacticsView() {
           </Button>
         ))}
       </div>
-      <div className="flex flex-col gap-1.5">
-        <p className="text-[11px] uppercase tracking-wide text-fg-muted">
-          Color del número
-        </p>
-        <div className="flex flex-wrap gap-1">
-          {NUMBER_COLOR_OPTIONS.map((opt) => (
-            <Button
-              key={opt.id}
-              size="sm"
-              variant={tactics.numberColor === opt.id ? "club" : "ghost"}
-              onClick={() => setNumberColor(opt.id as NumberColor)}
-            >
-              {opt.label}
-            </Button>
-          ))}
-        </div>
-      </div>
-
       {outPlayers.length ? (
         <div
           role="alert"

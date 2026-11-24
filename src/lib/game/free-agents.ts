@@ -3,6 +3,7 @@ import { aiTerms, applyTerms, contractEndLabel, renewedContract } from "./contra
 import { ensureFinance, financeOf, logTransfer, wageRoom } from "./finance";
 import { clamp, playerValue, uid } from "./format";
 import { normalizePotential } from "./potential";
+import { cachePlayerPortrait } from "./face-assets";
 import { ensurePos } from "./positions";
 import type { Rng } from "./rng";
 import { FREE_AGENT_EXTRAS } from "./names";
@@ -84,6 +85,7 @@ export function freeNumber(p: Player, squad: Player[]) {
 /** Ficha a un agente libre (humano o IA). Con `terms` aplica lo negociado; sin él, lo que pediría el jugador. */
 export function signFreeAgent(save: GameSave, p: Player, clubId: ClubId, terms?: ContractTerms) {
   save.freeAgents = save.freeAgents.filter((x) => x.id !== p.id);
+  cachePlayerPortrait(p);
   ensurePos(p); // todo fichaje entra con posición válida
   p.clubId = clubId;
   p.loanFrom = null;
@@ -99,6 +101,7 @@ export function signFreeAgent(save: GameSave, p: Player, clubId: ClubId, terms?:
 }
 
 export function releaseToFree(save: GameSave, p: Player) {
+  cachePlayerPortrait(p);
   ensurePos(p);
   // Un libre no puede seguir figurando como cedido de nadie.
   if (p.loanFrom || p.loanSeasons) save.loans = save.loans.filter((l) => l.playerId !== p.id);

@@ -674,7 +674,7 @@ function LivePitch({
   }, [startingXi, log, clubId]);
   const club = clubById(clubId);
   const slots = FORMATIONS[tactics.formation].slots;
-  const ink = resolveNumberColor(club.color, tactics.numberColor);
+  const ink = resolveNumberColor(club.color);
   const sentOff = useMemo(() => {
     const set = new Set<string>();
     for (const e of log)

@@ -14,6 +14,7 @@ import { SQUAD_LIMIT, SQUAD_MIN, capMarketValue, clamp } from "./format";
 import type { Rng } from "./rng";
 import { topUpThinSquads } from "./squads";
 import { settleSellOn } from "./transfers";
+import { cachePlayerPortrait } from "./face-assets";
 import type { Club, ClubId, GameSave, Player, Pos } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -222,6 +223,7 @@ function executeSale(ctx: Ctx, p: Player, buyer: Club, fee: number, kind: "sale"
   const net = settleSellOn(save, p, fee, false);
   creditClub(save, sellerId, net);
   creditClub(save, buyer.id, -fee);
+  cachePlayerPortrait(p);
   moveToSquad(ctx, p, sellerId, buyer.id);
   p.clubId = buyer.id;
   p.listed = false;
@@ -240,6 +242,7 @@ function executeLoan(ctx: Ctx, p: Player, borrower: Club, seasons: number, fee: 
   const wage = p.wage;
   creditClub(save, lenderId, fee);
   creditClub(save, borrower.id, -fee);
+  cachePlayerPortrait(p);
   moveToSquad(ctx, p, lenderId, borrower.id);
   p.loanFrom = lenderId;
   p.clubId = borrower.id;

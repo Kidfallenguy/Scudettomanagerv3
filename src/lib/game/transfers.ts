@@ -20,8 +20,7 @@ import { publishNews } from "./news";
 import { Rng } from "./rng";
 import { generated, resyncStats } from "./squads";
 import {
-  DEFAULT_PLAYER_FACE_URL,
-  playerFaceUrl,
+  cachePlayerPortrait,
   WONDERKID_FACE_COUNT,
   wonderkidFaceUrl,
 } from "./face-assets";
@@ -349,6 +348,7 @@ export function acceptOffer(save: GameSave, offerId: string, keepPct = 0): strin
   save.budget += offer.kind === "buy" ? settleSellOn(save, p, fee, true) : fee;
   logTransfer(save, p, save.clubId, offer.fromClubId, offer.kind === "loan" ? "loan" : "sale", fee);
   save.offers = save.offers.filter((o) => o.id !== offerId && o.playerId !== p.id);
+  cachePlayerPortrait(p);
 
   if (offer.kind === "loan") {
     p.clubId = offer.fromClubId;
@@ -428,10 +428,7 @@ export function completeSigning(
   if (save.budget < fee + terms.signingBonus) return "No hay presupuesto para este fichaje.";
 
   ensurePos(p); // el fichado siempre entra con posición válida
-  const portraitUrl = playerFaceUrl(p);
-  if (!p.portraitUrl && portraitUrl !== DEFAULT_PLAYER_FACE_URL) {
-    p.portraitUrl = portraitUrl;
-  }
+  cachePlayerPortrait(p);
   const from = free ? null : clubById(p.clubId);
   const fromId = p.clubId;
   save.budget -= fee + terms.signingBonus;
@@ -542,6 +539,7 @@ export function recallLoanedPlayer(save: GameSave, playerId: string): string | n
   const borrower = loan.toClubId;
   save.budget -= cost;
   creditClub(save, borrower, cost);
+  cachePlayerPortrait(p);
   p.clubId = save.clubId;
   p.loanFrom = null;
   p.loanSeasons = 0;
@@ -574,6 +572,7 @@ export function resolveLoans(save: GameSave) {
         optionFee <= p.value * 1.1 &&
         canAfford(save, loan.toClubId, optionFee);
       if (buyerExercisesOption) {
+        cachePlayerPortrait(p);
         creditClub(save, loan.toClubId, -optionFee);
         creditClub(save, loan.fromClubId, optionFee);
         p.clubId = loan.toClubId;
@@ -591,6 +590,7 @@ export function resolveLoans(save: GameSave) {
         }
         continue;
       }
+      cachePlayerPortrait(p);
       p.clubId = loan.fromClubId;
       p.loanFrom = null;
       p.loanSeasons = 0;

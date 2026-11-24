@@ -7,7 +7,7 @@ import { clubById } from "@/lib/game/clubs";
 import { compBackdropStyle } from "@/lib/game/competitions";
 import { userMatchBoost } from "@/lib/game/event-effects";
 import { lastName } from "@/lib/game/format";
-import { LiveEngine, gkSkill } from "@/lib/game/live-match";
+import { LiveEngine, gkSkill, SHOT_POWER_RANGE } from "@/lib/game/live-match";
 import type { LiveInput, Outcome, Side, Situation } from "@/lib/game/live-match";
 import { nextUserContext } from "@/lib/game/selectors";
 import { autoBench, autoLineup, clubQuality } from "@/lib/game/sim";
@@ -161,7 +161,8 @@ function LiveMatchInner({ fixture }: { fixture: Fixture }) {
   };
 
   useEffect(() => {
-    scroller.current?.lastElementChild?.scrollIntoView({ block: "end" });
+    const list = scroller.current;
+    if (list) list.scrollTop = list.scrollHeight;
   }, [engine.feed.length]);
 
   const decide = (input: LiveInput) => {
@@ -266,7 +267,7 @@ function LiveMatchInner({ fixture }: { fixture: Fixture }) {
         </div>
       </div>
 
-      <ul ref={scroller} className="mx-auto max-h-[32dvh] w-full max-w-5xl flex-1 overflow-y-auto px-4 py-3">
+      <ul ref={scroller} className="mx-auto max-h-[32dvh] min-h-0 w-full max-w-5xl flex-1 overflow-y-auto overscroll-contain px-4 py-3">
         {engine.feed.map((l, i) => (
           <li
             key={`${l.minute}-${i}`}
@@ -739,7 +740,14 @@ function ShotGame({ sit, onDecide }: { sit: Situation; onDecide: (i: LiveInput) 
           ))}
         </div>
       </div>
-      <Meter markerRef={markerRef} sweet={[70, 88]} label="Potencia (tocá Disparar en la zona verde)" />
+      <Meter
+        markerRef={markerRef}
+        sweet={[SHOT_POWER_RANGE[0], SHOT_POWER_RANGE[1]]}
+        label="Potencia (tocá Disparar en la zona verde)"
+      />
+      <p className="-mt-2 text-xs text-fg-muted">
+        La zona verde mejora el remate, pero el arquero todavía puede atajarlo.
+      </p>
       <Button
         variant="club"
         size="lg"

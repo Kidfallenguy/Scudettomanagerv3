@@ -1,12 +1,3 @@
-import type { NumberColor } from "./types";
-
-export const NUMBER_COLOR_OPTIONS: Array<{ id: NumberColor; label: string; hex: string }> = [
-  { id: "auto", label: "Auto", hex: "" },
-  { id: "white", label: "Blanco", hex: "#f4efe6" },
-  { id: "black", label: "Negro", hex: "#111111" },
-  { id: "gold", label: "Oro", hex: "#d4af37" },
-];
-
 function hexRgb(hex: string): { r: number; g: number; b: number } | null {
   const h = hex.replace("#", "");
   if (h.length < 6) return null;
@@ -32,10 +23,7 @@ function isWhiteOrYellow(hex: string): boolean {
 }
 
 /** Shirt number ink. White/yellow kits auto-switch to black so the digit stays readable. */
-export function resolveNumberColor(kitHex: string, override: NumberColor = "auto"): string {
-  if (override === "white") return "#f4efe6";
-  if (override === "black") return "#111111";
-  if (override === "gold") return "#d4af37";
+export function resolveNumberColor(kitHex: string): string {
   return isWhiteOrYellow(kitHex) ? "#111111" : "#f4efe6";
 }
 

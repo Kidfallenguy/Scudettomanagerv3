@@ -133,6 +133,7 @@ const MENTALITY_MOD: Record<Mentality, { atk: number; def: number }> = {
 };
 
 const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
+export const SHOT_POWER_RANGE = [70, 86] as const;
 const lastName = (name: string) => name.trim().split(/\s+/).pop() ?? name;
 /** Forma y estado físico mueven la habilidad efectiva (−5..5 de forma, 40..100 de físico). */
 const eff = (p: Player, v: number) => v + p.form * 1.2 + (p.fitness - 85) * 0.12;
@@ -349,6 +350,7 @@ export class LiveEngine {
     result: "goal" | "save" | "wide" | "post" | "bar",
     assist?: Player,
     verb = "dispara",
+    shotPower?: number,
   ): Outcome {
     const s = this.stats[side];
     s.shots += 1;
@@ -364,23 +366,29 @@ export class LiveEngine {
       this.line(`¡GOL! ${text}.`, tone);
       return { tone, goal: true, label: side === this.user ? "¡GOL!" : `Gol de ${this.short(side)}`, text: `${text}.` };
     }
+    const powerFeedback =
+      shotPower === undefined
+        ? ""
+        : shotPower >= SHOT_POWER_RANGE[0] && shotPower <= SHOT_POWER_RANGE[1]
+          ? "Potencia en zona verde, pero "
+          : "Potencia fuera de la zona verde. ";
     if (result === "save") {
       s.onTarget += 1;
       const caught = this.rng.chance(0.35 + ((gk.gk?.han ?? 60) - 60) * 0.006);
       if (!caught && this.rng.chance(0.5)) this.stats[side].corners += 1;
-      const text = `${shooter.name} ${verb} y ${lastName(gk.name)} ${caught ? "la ataja" : "la manda al córner"}.`;
+      const text = `${powerFeedback}${shooter.name} ${verb} y ${lastName(gk.name)} ${caught ? "la ataja" : "la manda al córner"}.`;
       this.ev("save", text, { clubId, playerId: shooter.id });
       const tone = this.toneFor(side, false);
       this.line(text, tone);
       return { tone, goal: false, label: "Atajada", text };
     }
     const label = result === "post" ? "¡Al palo!" : result === "bar" ? "Sobre el travesaño" : "Tiro afuera";
-    const text =
+    const text = powerFeedback + (
       result === "post"
         ? `${name} ${verb} y la pelota pega en el palo.`
         : result === "bar"
           ? `${name} ${verb} y se va por encima del travesaño.`
-          : `${name} ${verb} y se va afuera.`;
+          : `${name} ${verb} y se va afuera.`);
     this.ev("shot", text, { clubId, playerId: shooter.id });
     const tone = this.toneFor(side, false);
     this.line(text, tone);
@@ -707,7 +715,15 @@ export class LiveEngine {
         edge: this.edge[side],
       });
       const verb = sit.kind === "freekick" ? "patea el tiro libre" : sit.kind === "penalty" ? "patea el penal" : sit.headed ? "cabecea" : "define";
-      return this.applyShot(side, sit.actor, keeper, r, sit.assist, verb);
+      return this.applyShot(
+        side,
+        sit.actor,
+        keeper,
+        r,
+        sit.assist,
+        verb,
+        sit.userAttacks ? input.power : undefined,
+      );
     }
 
     if (sit.kind === "through" && input.type === "through") {

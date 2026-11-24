@@ -70,7 +70,6 @@ export function MatchRatings({ result }: { result: MatchResult }) {
   const userId = useGame((s) => s.clubId);
   const players = useGame((s) => s.players);
   const userFormation = useGame((s) => s.tactics.formation);
-  const numberColor = useGame((s) => s.tactics.numberColor);
   const [side, setSide] = useState<"home" | "away">(result.homeId === userId ? "home" : "away");
 
   const ratings = result.ratings;
@@ -82,7 +81,7 @@ export function MatchRatings({ result }: { result: MatchResult }) {
   const lineup = side === "home" ? result.homeLineup : result.awayLineup;
   const subsIn = (side === "home" ? result.homeSubsIn : result.awaySubsIn) ?? [];
   const slots = FORMATIONS[clubId === userId ? userFormation : "433"].slots;
-  const ink = resolveNumberColor(club.color, clubId === userId ? numberColor : "auto");
+  const ink = resolveNumberColor(club.color);
 
   // Mejor jugador del partido (de ambos equipos).
   const best = Object.entries(ratings).sort((a, b) => b[1] - a[1])[0];

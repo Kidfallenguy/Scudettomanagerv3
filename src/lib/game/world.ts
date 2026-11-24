@@ -1651,7 +1651,7 @@ export function createCareer(clubId: ClubId, seed = Date.now() % 1_000_000_000, 
         mentality: "balanced" as const,
         lineup,
         bench: pickBench(squad, lineup),
-        numberColor: "auto" as const,
+
       };
     })(),
     budget: startingBudget(club.prestige, club.league),
