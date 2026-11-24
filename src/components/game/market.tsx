@@ -32,6 +32,13 @@ import { hasPlayerPhoto } from "@/lib/game/face-assets";
 import { playGameSound } from "@/lib/game/sound";
 import { isOwnedAtClub } from "@/lib/game/squad-rules";
 import {
+  isValidLoanOptionPrice,
+  loanOptionAskPrice,
+  loanOptionCounteroffer,
+  maxLoanOptionPrice,
+  parseMoneyInput,
+} from "@/lib/game/loan-terms";
+import {
   askPrice,
   findMarketPlayerInLists,
   fullMarketFromLists,
@@ -249,6 +256,7 @@ export function Market() {
   const [loanYears, setLoanYears] = useState<1 | 2 | 3>(1);
   const [loanBuyOption, setLoanBuyOption] = useState(false);
   const [loanOptionPrice, setLoanOptionPrice] = useState("");
+  const [loanCounteroffer, setLoanCounteroffer] = useState<number | null>(null);
   const [scope, setScope] = useState<Scope>("all");
   const [deal, setDeal] = useState<{
     playerId: string;
@@ -442,8 +450,33 @@ export function Market() {
     [picked, save.players, save.freeAgents],
   );
   const defaultLoanOptionFee = current
-    ? Math.max(250_000, Math.round((current.value * 1.2) / 250_000) * 250_000)
+    ? loanOptionAskPrice(current.value)
     : 0;
+  const parsedLoanOptionPrice = parseMoneyInput(
+    loanOptionPrice || String(defaultLoanOptionFee),
+  );
+  const validLoanOptionPrice =
+    parsedLoanOptionPrice !== null &&
+    current !== null &&
+    isValidLoanOptionPrice(parsedLoanOptionPrice, current.value);
+  const completeLoanSigning = (optionFee?: number) => {
+    if (!current) return;
+    const err = takeOnLoan(current.id, loanYears, optionFee);
+    setMsg(err ?? `${current.name} llega a cesión.`);
+    if (!err) {
+      playGameSound("sign");
+      setMarketMoment({
+        kind: "loan",
+        player: current,
+        destination: clubId,
+        fee: loanFee(current, loanYears),
+        loanSeasons: loanYears,
+        optionFee,
+      });
+      setPicked(null);
+      setLoanCounteroffer(null);
+    }
+  };
   // Escaparate y ofertas: solo jugadores propios. Los cedidos no se pueden vender ni ofrecer.
   const mine = useMemo(
     () => save.players.filter((p) => isOwnedAtClub(p, clubId)),
@@ -1007,6 +1040,7 @@ export function Market() {
                     setPicked(p.id);
                     setLoanBuyOption(false);
                     setLoanOptionPrice("");
+                    setLoanCounteroffer(null);
                   }}
                 />
               ))
@@ -1078,9 +1112,10 @@ export function Market() {
                     <input
                       type="checkbox"
                       checked={loanBuyOption}
-                      onChange={(event) =>
-                        setLoanBuyOption(event.target.checked)
-                      }
+                      onChange={(event) => {
+                        setLoanBuyOption(event.target.checked);
+                        setLoanCounteroffer(null);
+                      }}
                     />
                     Negociar opción de compra
                   </label>
@@ -1089,20 +1124,42 @@ export function Market() {
                       Precio acordado para ficharlo
                       <input
                         className="mt-1 h-10 w-full rounded-xl bg-elevated px-3 tabular-nums shadow-[var(--shadow-border)] outline-none focus:shadow-[var(--shadow-border-hover)]"
-                        type="number"
-                        min="1"
-                        step="250000"
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="Ej.: 850k o 1,2m"
                         value={loanOptionPrice || String(defaultLoanOptionFee)}
-                        onChange={(event) =>
-                          setLoanOptionPrice(event.target.value)
-                        }
+                        onChange={(event) => {
+                          setLoanOptionPrice(event.target.value);
+                          setLoanCounteroffer(null);
+                        }}
                       />
                       <span className="mt-1 block text-[11px] text-fg-muted">
-                        Si ejerces la opción durante la cesión, este precio
-                        queda cerrado; si no, caduca al regresar el jugador.
+                        El club pide {formatMoney(defaultLoanOptionFee)}.
+                        Máximo:{" "}
+                        {formatMoney(
+                          current ? maxLoanOptionPrice(current.value) : 0,
+                        )}
+                        . Si ofreces menos que el valor actual, podría
+                        contraofertar.
                       </span>
                     </label>
                   ) : null}
+                </div>
+              ) : null}
+              {tab === "loans" && loanCounteroffer !== null ? (
+                <div className="rounded-xl border border-border bg-surface p-3 text-sm">
+                  <p>
+                    El club no acepta esa cifra y contraoferta{" "}
+                    <strong>{formatMoney(loanCounteroffer)}</strong>, el valor
+                    actual del jugador.
+                  </p>
+                  <Button
+                    className="mt-2 w-full"
+                    variant="club"
+                    onClick={() => completeLoanSigning(loanCounteroffer)}
+                  >
+                    Aceptar contraoferta
+                  </Button>
                 </div>
               ) : null}
             </div>
@@ -1122,35 +1179,22 @@ export function Market() {
                 <Button
                   variant="club"
                   disabled={
-                    tab === "loans" &&
-                    loanBuyOption &&
-                    (!Number.isFinite(
-                      Number(loanOptionPrice || defaultLoanOptionFee),
-                    ) ||
-                      Number(loanOptionPrice || defaultLoanOptionFee) <= 0)
+                    tab === "loans" && loanBuyOption && !validLoanOptionPrice
                   }
                   onClick={() => {
-                    const agreedOptionFee = loanBuyOption
-                      ? Number(loanOptionPrice || defaultLoanOptionFee)
-                      : undefined;
-                    const err = takeOnLoan(
-                      current.id,
-                      loanYears,
-                      agreedOptionFee,
-                    );
-                    setMsg(err ?? `${current.name} llega a cesión.`);
-                    if (!err) {
-                      playGameSound("sign");
-                      setMarketMoment({
-                        kind: "loan",
-                        player: current,
-                        destination: clubId,
-                        fee: loanFee(current, loanYears),
-                        loanSeasons: loanYears,
-                        optionFee: agreedOptionFee,
-                      });
-                      setPicked(null);
+                    if (loanBuyOption && parsedLoanOptionPrice !== null) {
+                      const counteroffer = loanOptionCounteroffer(
+                        current.value,
+                        parsedLoanOptionPrice,
+                      );
+                      if (counteroffer !== null) {
+                        setLoanCounteroffer(counteroffer);
+                        return;
+                      }
                     }
+                    completeLoanSigning(
+                      loanBuyOption ? parsedLoanOptionPrice ?? undefined : undefined,
+                    );
                   }}
                 >
                   Ceder por {formatMoney(loanFee(current, loanYears))}

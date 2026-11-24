@@ -36,6 +36,12 @@ import {
   ovrClass,
   posGroup,
 } from "@/lib/game/format";
+import {
+  isValidLoanOptionPrice,
+  loanOptionAskPrice,
+  maxLoanOptionPrice,
+  parseMoneyInput,
+} from "@/lib/game/loan-terms";
 import type {
   LoanListingTerms,
   Player,
@@ -99,7 +105,6 @@ function isReadyToRetire(player: Player, season: number) {
 type LoanSetupState = {
   playerId: string;
   seasons: LoanListingTerms["seasons"];
-  fee: string;
   includeBuyOption: boolean;
   buyOptionFee: string;
 };
@@ -438,14 +443,8 @@ export function Squad() {
             setLoanSetup({
               playerId: current.id,
               seasons: 1,
-              fee: String(loanFee(current, 1)),
               includeBuyOption: false,
-              buyOptionFee: String(
-                Math.max(
-                  250_000,
-                  Math.round((current.value * 1.2) / 250_000) * 250_000,
-                ),
-              ),
+              buyOptionFee: String(loanOptionAskPrice(current.value)),
             });
           }}
           onBlockOffers={() => toggleNoOffers(current.id)}
@@ -780,12 +779,11 @@ function LoanListingDialog({
   onConfirm: (terms: LoanListingTerms) => void;
 }) {
   if (!player) return null;
-  const defaultFee = loanFee(player, setup.seasons);
-  const validFee = Number.isFinite(Number(setup.fee)) && Number(setup.fee) >= 0;
+  const parsedOptionFee = parseMoneyInput(setup.buyOptionFee);
   const validOption =
     !setup.includeBuyOption ||
-    (Number.isFinite(Number(setup.buyOptionFee)) &&
-      Number(setup.buyOptionFee) > 0);
+    (parsedOptionFee !== null &&
+      isValidLoanOptionPrice(parsedOptionFee, player.value));
 
   return (
     <div
@@ -806,9 +804,8 @@ function LoanListingDialog({
           Condiciones de la cesión
         </h3>
         <p className="mt-1 text-sm text-fg-muted">
-          Define el plazo, el pago y si aceptas que puedan fichar a{" "}
-          {player.name}
-          cuando termine la temporada.
+          Define el plazo y si aceptas que puedan fichar a {player.name} cuando
+          termine la temporada.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           {([1, 2, 3] as const).map((seasons) => (
@@ -820,10 +817,6 @@ function LoanListingDialog({
                 onChange({
                   ...setup,
                   seasons,
-                  fee:
-                    Number(setup.fee) === loanFee(player, setup.seasons)
-                      ? String(loanFee(player, seasons))
-                      : setup.fee,
                 })
               }
             >
@@ -831,22 +824,10 @@ function LoanListingDialog({
             </Button>
           ))}
         </div>
-        <label className="mt-4 block text-sm">
-          Precio de la cesión
-          <input
-            className="mt-1 h-11 w-full rounded-xl bg-surface px-3 tabular-nums shadow-[var(--shadow-border)] outline-none focus:shadow-[var(--shadow-border-hover)]"
-            type="number"
-            min="0"
-            step="250000"
-            value={setup.fee}
-            onChange={(event) =>
-              onChange({ ...setup, fee: event.target.value })
-            }
-          />
-          <span className="mt-1 block text-[11px] text-fg-muted">
-            Referencia del juego: {formatMoney(defaultFee)}
-          </span>
-        </label>
+        <p className="mt-3 text-xs text-fg-muted">
+          El pago de la cesión se calcula automáticamente según el jugador y el
+          plazo.
+        </p>
         <label className="mt-4 flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -862,14 +843,18 @@ function LoanListingDialog({
             Precio acordado si lo quieren fichar
             <input
               className="mt-1 h-11 w-full rounded-xl bg-surface px-3 tabular-nums shadow-[var(--shadow-border)] outline-none focus:shadow-[var(--shadow-border-hover)]"
-              type="number"
-              min="1"
-              step="250000"
+              type="text"
+              inputMode="decimal"
+              placeholder="Ej.: 850k o 1,2m"
               value={setup.buyOptionFee}
               onChange={(event) =>
                 onChange({ ...setup, buyOptionFee: event.target.value })
               }
             />
+            <span className="mt-1 block text-[11px] text-fg-muted">
+              Máximo: {formatMoney(maxLoanOptionPrice(player.value))}. Acepta k,
+              m o millones.
+            </span>
           </label>
         ) : null}
         <div className="mt-5 flex justify-end gap-2">
@@ -878,13 +863,13 @@ function LoanListingDialog({
           </Button>
           <Button
             variant="club"
-            disabled={!validFee || !validOption}
+            disabled={!validOption}
             onClick={() =>
               onConfirm({
                 seasons: setup.seasons,
-                fee: Math.round(Number(setup.fee)),
+                fee: loanFee(player, setup.seasons),
                 buyOptionFee: setup.includeBuyOption
-                  ? Math.round(Number(setup.buyOptionFee))
+                  ? parsedOptionFee!
                   : undefined,
               })
             }

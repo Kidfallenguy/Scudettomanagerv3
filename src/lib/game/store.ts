@@ -150,6 +150,7 @@ import {
   simSlot,
 } from "./tick";
 import { normalizeNews } from "./news";
+import { isValidLoanOptionPrice } from "./loan-terms";
 import {
   acceptOffer,
   completeRenewal,
@@ -2571,7 +2572,10 @@ export const useGame = create<GameStore>()(
             ...p,
             listedForLoan: next,
             listed: next ? false : p.listed,
-            loanListing: next ? terms : undefined,
+            loanListing:
+              next && terms
+                ? { ...terms, fee: loanFee(p, terms.seasons) }
+                : undefined,
           };
         });
         set({ players });
@@ -2583,6 +2587,11 @@ export const useGame = create<GameStore>()(
         if (p.clubId === s.clubId) return "Ya está en tu plantilla.";
         if (p.loanFrom) return "Ya está cedido.";
         if (!hasSquadRoom(s.players, s.clubId)) return SQUAD_FULL_MSG;
+        if (
+          typeof buyOptionFee === "number" &&
+          !isValidLoanOptionPrice(buyOptionFee, p.value)
+        )
+          return "La opción de compra debe estar entre 1 y el 150% del valor del jugador.";
         const fee = loanFee(p, seasons);
         if (s.budget < fee) return "No alcanza para la cesión.";
         const origin = p.clubId;

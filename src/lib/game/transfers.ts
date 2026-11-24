@@ -4,6 +4,7 @@ import { interestedBuyers, runAiMarket } from "./ai-market";
 import { NO_CLUB, canAfford, creditClub, ensureFinance, logTransfer } from "./finance";
 import { freeNumber, signFreeAgent } from "./free-agents";
 import { ensurePos } from "./positions";
+import { isValidLoanOptionPrice } from "./loan-terms";
 import {
   SQUAD_FULL_MSG,
   freeAgentSaleBlockReason,
@@ -323,6 +324,12 @@ export function acceptOffer(save: GameSave, offerId: string, keepPct = 0): strin
     const blocked = saleBlockReason(save, p);
     if (blocked) return blocked;
   }
+  if (
+    offer.kind === "loan" &&
+    typeof offer.loanOptionFee === "number" &&
+    !isValidLoanOptionPrice(offer.loanOptionFee, p.value)
+  )
+    return "La opción de compra debe estar entre 1 y el 150% del valor del jugador.";
 
   const pct = offer.kind === "buy" ? clamp(Math.round(keepPct), 0, 30) : 0;
   // Quedarte con un % de la próxima venta abarata lo que cobrás hoy (cada 10% = 5%).
