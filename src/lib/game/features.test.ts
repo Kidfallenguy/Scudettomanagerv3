@@ -72,11 +72,11 @@ test("los premios mundiales priorizan media y división sobre estadísticas infl
   for (const player of save.players) player.apps = 0;
   for (const league of leagues) {
     const rows = save.leagueTables[league];
-    rows.forEach((row) => {
+    rows.forEach((row, index) => {
       row.played = 20;
+      row.pts = rows.length - index;
       const player = save.players.find((candidate) => candidate.clubId === row.clubId && candidate.pos !== "GK");
       if (!player) return;
-      const index = rows.indexOf(row);
       player.age = 19;
       player.apps = 20;
       player.ovr = 80;

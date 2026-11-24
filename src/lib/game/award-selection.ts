@@ -1,7 +1,12 @@
 import { ensureSeasonAwards, findAward, setAwardResult, type AwardKind, type AwardNominee } from "./awards";
+import {
+  hasAwardClubEligibility,
+  isTopFlightLeague,
+  meetsAwardPerformanceThreshold,
+} from "./award-selection-rules";
 import { clubById } from "./clubs";
 import { Rng } from "./rng";
-import type { ClubId, GameSave, LeagueKind, Player, PlayableLeagueId, Pos, Standing } from "./types";
+import type { ClubId, GameSave, Player, PlayableLeagueId, Pos, Standing } from "./types";
 import { sortTable } from "./world";
 
 // ---------------------------------------------------------------------------
@@ -71,20 +76,6 @@ const LEAGUE_WEIGHT: Record<PlayableLeagueId, number> = {
   saudiProLeague: 0.7,
   saudiFirstDivision: 0.4,
 };
-
-const TOP_FLIGHT_LEAGUES = new Set<LeagueKind>([
-  "premier",
-  "serieA",
-  "laliga",
-  "bundesliga",
-  "ligue1",
-  "argentina",
-  "brasileirao",
-  "primeira",
-  "eredivisie",
-  "mls",
-  "saudiProLeague",
-]);
 
 /** Importancia de cada título de la temporada para el Balón de Oro. */
 const TITLE_POINTS = { league: 3, coppa: 1, ucl: 6, libertadores: 4, uel: 2, uecl: 1.2, sudamericana: 1.5 } as const;
@@ -329,7 +320,7 @@ function balonDeOro(save: GameSave, ctxs: Map<ClubId, ClubContext>): Result {
     .filter((p) => {
       const club = clubById(p.clubId);
       const league = save.divisions?.[p.clubId] ?? club.league;
-      return !club.ghost && TOP_FLIGHT_LEAGUES.has(league);
+      return !club.ghost && isTopFlightLeague(league);
     })
     .map((p) => {
       const ctx = ctxs.get(p.clubId);
@@ -416,11 +407,25 @@ function puskas(save: GameSave, ctxs: Map<ClubId, ClubContext>): Result {
 }
 
 function guanteDeOro(save: GameSave, ctxs: Map<ClubId, ClubContext>): Result {
-  const all = eligiblePlayers(save, ctxs).filter((p) => p.pos === "GK");
+  const all = eligiblePlayers(save, ctxs).filter((p) => {
+    const ctx = ctxs.get(p.clubId);
+    return (
+      p.pos === "GK" &&
+      ctx !== undefined &&
+      hasAwardClubEligibility(ctx.league, ctx.titles.length)
+    );
+  });
   const need = minApps(all, 0.45, 8);
   const rng = rngFor(save, "guante_oro");
   const scored: Array<Scored<Player>> = all
-    .filter((p) => p.apps >= need)
+    .filter((p) => {
+      const ctx = ctxs.get(p.clubId);
+      return meetsAwardPerformanceThreshold(
+        p.apps,
+        need,
+        estimateCleanSheets(p, ctx, null),
+      );
+    })
     .map((p) => {
       const ctx = ctxs.get(p.clubId);
       const cleanSheets = estimateCleanSheets(p, ctx, rng);
@@ -452,11 +457,21 @@ function guanteDeOro(save: GameSave, ctxs: Map<ClubId, ClubContext>): Result {
 }
 
 function trofeoKopa(save: GameSave, ctxs: Map<ClubId, ClubContext>): Result {
-  const young = eligiblePlayers(save, ctxs).filter((p) => p.age <= KOPA_MAX_AGE);
-  const need = minApps(young, 0.5, 5);
+  const young = eligiblePlayers(save, ctxs).filter((p) => {
+    const ctx = ctxs.get(p.clubId);
+    return (
+      p.age <= KOPA_MAX_AGE &&
+      ctx !== undefined &&
+      hasAwardClubEligibility(ctx.league, ctx.titles.length)
+    );
+  });
+  const need = minApps(young, 0.5, 8);
   const rng = rngFor(save, "kopa");
   const scored: Array<Scored<Player>> = young
-    .filter((p) => p.apps >= need)
+    .filter(
+      (p) =>
+        meetsAwardPerformanceThreshold(p.apps, need, production(p, ctxs)),
+    )
     .map((p) => {
       const ctx = ctxs.get(p.clubId);
       const growth = Math.max(-2, Math.min(8, p.ovr - (p.seasonStartOvr || p.ovr)));
