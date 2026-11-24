@@ -20,7 +20,6 @@ export const Route = createRootRoute({
     ],
     links: [
       { rel: "icon", type: "image/png", sizes: "96x96", href: "/favicon.png" },
-      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
       { rel: "canonical", href: "https://scudetto-320.vercel.app/" },
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/__grok/manifest.webmanifest" },
