@@ -118,6 +118,43 @@ async function copyPendingFaces() {
   return { copied: copies.length, alreadyPresent };
 }
 
+async function copyOtherFaces() {
+  const sourceDirectory = path.join(pendingSource, "Otros");
+  const entries = (await entriesIfPresent(sourceDirectory)).filter(
+    (entry) =>
+      entry.isFile() &&
+      photoExtensions.has(path.extname(entry.name).toLowerCase()),
+  );
+  const destinationNames = new Set(
+    (await entriesIfPresent(realDestination)).map((entry) => entry.name),
+  );
+  let copied = 0;
+  let alreadyPresent = 0;
+
+  for (const entry of entries) {
+    const sourcePath = path.join(sourceDirectory, entry.name);
+    const destinationPath = path.join(realDestination, entry.name);
+    if (destinationNames.has(entry.name)) {
+      const [sourceContents, destinationContents] = await Promise.all([
+        readFile(sourcePath),
+        readFile(destinationPath),
+      ]);
+      if (!sourceContents.equals(destinationContents)) {
+        throw new Error(
+          `Face already exists with different content; refusing to overwrite: ${destinationPath}`,
+        );
+      }
+      alreadyPresent++;
+      continue;
+    }
+
+    await copyFile(sourcePath, destinationPath);
+    copied++;
+  }
+
+  return { copied, alreadyPresent };
+}
+
 function playerFaceIndex(files, sourcePaths = new Map()) {
   const index = {};
   const indexedFiles = {};
@@ -158,6 +195,10 @@ function playerFaceIndex(files, sourcePaths = new Map()) {
 await mkdir(realDestination, { recursive: true });
 
 const { copied: copiedFaces, alreadyPresent } = await copyPendingFaces();
+const {
+  copied: copiedOtherFaces,
+  alreadyPresent: alreadyPresentOtherFaces,
+} = await copyOtherFaces();
 const realFiles = await pngFiles(realSource);
 for (const file of realFiles) {
   const relative = path.relative(realSource, file);
@@ -173,5 +214,5 @@ await writeFile(
 );
 
 console.log(
-  `Copied ${copiedFaces} pending faces, preserved ${alreadyPresent} existing copies, and synced ${realFiles.length} real photos.`,
+  `Copied ${copiedFaces} pending faces and ${copiedOtherFaces} other faces, preserved ${alreadyPresent + alreadyPresentOtherFaces} existing copies, and synced ${realFiles.length + copiedOtherFaces} real photos.`,
 );

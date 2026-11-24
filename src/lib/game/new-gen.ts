@@ -1,4 +1,5 @@
 import { CLUBS } from "./clubs";
+import { realPlayerFace } from "./face-assets";
 import { playerValue, playerWage } from "./format";
 import { normalizePotential } from "./potential";
 import { Rng } from "./rng";
@@ -13,6 +14,7 @@ interface NewGenSeed {
   nat: string;
   pot: number;
   clubId?: string;
+  faceAssetName?: string;
 }
 
 export const NEW_GEN_11: readonly NewGenSeed[] = [
@@ -53,12 +55,12 @@ export const NEW_GEN_11: readonly NewGenSeed[] = [
   { name: "Ze Mvondo", pos: "ST", ovr: 65, age: 18, nat: "CMR", pot: 95 },
   { name: "Karem Al-Khoras", pos: "ST", ovr: 58, age: 17, nat: "KSA", pot: 93 },
   { name: "Gonzalo Sanguinetti", pos: "ST", ovr: 70, age: 20, nat: "URU", pot: 96 },
-  { name: "Bruno Gonzalez", pos: "CM", ovr: 74, age: 15, nat: "ARG", pot: 95 },
-  { name: "Lucas Cayllahua", pos: "RB", ovr: 64, age: 18, nat: "PER", pot: 96 },
-  { name: "Joel Videla", pos: "CAM", ovr: 69, age: 15, nat: "ARG", pot: 95 },
-  { name: "Daniel Curti", pos: "CB", ovr: 38, age: 17, nat: "ARG", pot: 96, clubId: "tpa_glew" },
-  { name: "Santiago Bienati", pos: "ST", ovr: 38, age: 15, nat: "ARG", pot: 97, clubId: "tpa_el_chasqui" },
-  { name: "Tiziano Bolaños", pos: "GK", ovr: 75, age: 15, nat: "ARG", pot: 97 },
+  { name: "Bruno Gonzalez", pos: "CM", ovr: 74, age: 15, nat: "ARG", pot: 95, faceAssetName: "Bruno Gonzales" },
+  { name: "Lucas Cayllahua", pos: "RB", ovr: 64, age: 18, nat: "PER", pot: 96, faceAssetName: "Lucas Callahyen" },
+  { name: "Joel Videla", pos: "CAM", ovr: 69, age: 15, nat: "ARG", pot: 95, faceAssetName: "Joel Videla" },
+  { name: "Daniel Curti", pos: "CB", ovr: 38, age: 17, nat: "ARG", pot: 96, clubId: "tpa_glew", faceAssetName: "Santiago Curti" },
+  { name: "Santiago Bienati", pos: "ST", ovr: 38, age: 15, nat: "ARG", pot: 97, clubId: "tpa_el_chasqui", faceAssetName: "Santiago Bienati" },
+  { name: "Tiziano Bolaños", pos: "GK", ovr: 75, age: 15, nat: "ARG", pot: 97, faceAssetName: "Tiziano Bolaños" },
 ];
 
 export function addNewGen11(players: Player[], rng: Rng, usedNames: Set<string>): void {
@@ -85,6 +87,10 @@ export function addNewGen11(players: Player[], rng: Rng, usedNames: Set<string>)
     player.age = seed.age;
     player.nat = seed.nat;
     player.pot = normalizePotential(seed.ovr, seed.pot);
+    const faceUrl = seed.faceAssetName
+      ? realPlayerFace(seed.faceAssetName)
+      : null;
+    if (faceUrl) player.portraitUrl = faceUrl;
     player.seasonStartOvr = seed.ovr;
     player.value = playerValue(player.ovr, player.age, player.pot);
     player.wage = playerWage(seed.ovr, club.prestige);

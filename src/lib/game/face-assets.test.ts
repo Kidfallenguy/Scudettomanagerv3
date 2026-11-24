@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   regenFaceUrl,
+  realPlayerFace,
   wonderkidAtlasTile,
   wonderkidFaceForPlayer,
   wonderkidFaceUrl,
@@ -37,5 +38,36 @@ test("Wonderkid player faces are stable and invalid atlas tiles are rejected", (
   assert.equal(
     wonderkidAtlasTile("/player-faces/wonderkids/atlas-0001.webp#64"),
     null,
+  );
+});
+
+test("New Gen prospects resolve their submitted face assets, including Daniel Curti's photo", () => {
+  assert.equal(
+    realPlayerFace("Bruno Gonzales"),
+    "/player-faces/real/Bruno%20Gonzales.png",
+  );
+  assert.equal(
+    realPlayerFace("Lucas Callahyen"),
+    "/player-faces/real/Lucas%20Callahyen.png",
+  );
+  assert.equal(
+    realPlayerFace("Joel Videla"),
+    "/player-faces/real/Joel%20Videla.png",
+  );
+  assert.equal(
+    realPlayerFace("Santiago Curti"),
+    "/player-faces/real/Santiago%20Curti.png",
+  );
+  assert.equal(
+    realPlayerFace("Daniel Curti"),
+    "/player-faces/real/Santiago%20Curti.png",
+  );
+  assert.equal(
+    realPlayerFace("Santiago Bienati"),
+    "/player-faces/real/Santiago%20Bienati.png",
+  );
+  assert.equal(
+    realPlayerFace("Tiziano Bolaños"),
+    "/player-faces/real/Tiziano%20Bola%C3%B1os.png",
   );
 });

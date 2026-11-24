@@ -23,9 +23,12 @@ disponible. Si aún falta edad o nacionalidad, el importador intenta completar
 los datos desde el perfil exacto de Transfermarkt cuando el jugador tiene una
 foto. Los registros que siguen incompletos o no se pueden verificar se omiten
 y se enumeran en el informe; no se inventan datos. Las imágenes sueltas en
-`FACES/poner/Otros` se dejan pendientes hasta poder confirmar el club, y las
-carpetas auxiliares con nombres que comienzan con guion bajo no se tratan como
-carpetas de jugadores. Las valoraciones de
+`FACES/poner/Otros` se publican junto con las fotos reales; las asociadas a
+prospectos New Gen se asignan explícitamente por nombre de archivo. En
+particular, `Santiago Curti.png` es la foto de Daniel Curti. Las demás fotos
+sueltas se dejan sin asignar hasta poder confirmar el jugador. Las carpetas
+auxiliares con nombres que comienzan con guion bajo no se tratan como carpetas
+de jugadores. Las valoraciones de
 jugadores nuevos son estimaciones internas de Scudetto basadas en prestigio y
 edad, no calificaciones oficiales. La posición usa la línea general de ESPN
 (portero, defensa, mediocampo o ataque), salvo que ya hubiera una posición
