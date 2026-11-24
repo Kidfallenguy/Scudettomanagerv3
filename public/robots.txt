@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://scudetto-320.vercel.app/sitemap.xml

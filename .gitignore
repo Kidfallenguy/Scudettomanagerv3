@@ -1,0 +1,12 @@
+.vercel  
+.grok  
+node_modules  
+dist  
+.output 
+public/crests/aux.png 
+/FACES/WONDERKIDSFACES/
+/FACES/Realplayersfaces/
+/FACES.zip
+/screenshots/
+/attachments/*.zip
+/server/attachments/*.zip

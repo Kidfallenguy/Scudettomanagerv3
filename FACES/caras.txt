@@ -1,0 +1,347 @@
+entonces empezemos buscandola los primeros equipos y despues dame los otros parte 1 investiga todos y buscalos en sortioutsi actualizados Aquí tienes la lista completa organizada equipo por equipo con la ID (número del archivo/carátula en Football Manager / Sortitoutsi) y el nombre exacto de cada futbolista.
+
+
+
+Esta estructura está en un formato de texto plano y directo (`ID` - `Nombre`) para que puedas pasárselo a la IA o script de automatización que rename y mueva las fotos a tu carpeta destino.
+
+
+
+SI EN ALGUNO DICE WONDERKIDS SIGNIFICA QUE TENDRAS QUE ELEGIR UNA FOTO AL AZAR DE LA CARPETA WONDERKIDS que tenes en faces/WonderkidFaces tambien Y PONERLA
+
+
+
+todas las imágenes renombradas deberán integrarse mandándolas a la carpeta FACES/Realplayersfaces
+
+Real Madrid
+18026122 - Thibaut Courtois
+
+71092601 - Andriy Lunin
+
+2000109240 - Dean Huijsen
+
+85137537 - Ibrahima Konaté
+
+19253400 - Éder Militão
+
+2000126407 - Raúl Asencio
+
+67215284 - Marc Cucurella
+
+2000032706 - Álvaro Carreras
+
+28104124 - Trent Alexander-Arnold
+
+85157121 - Aurélien Tchouaméni
+
+71083984 - Federico Valverde
+
+85185918 - Eduardo Camavinga
+
+29232937 - Jude Bellingham
+
+2000077193 - Arda Güler
+
+19302146 - Vinicius Junior
+
+19349887 - Rodrygo
+
+85139014 - Kylian Mbappé
+
+37059124 - Denzel Dumfries
+
+NO ENCONTRADO - Thiago Pitarch
+
+2000220941 - Endrick
+
+Barcelona
+67268802 - Joan García
+
+2000296497 - Pau Cubarsí
+
+67236528 - Eric García
+
+2000282431 - Gerard Martín
+
+67283664 - Alejandro Balde
+
+85155913 - Jules Koundé
+
+19131580 - João Cancelo
+
+67215886 - Rodri
+
+67293495 - Pedri
+
+67296024 - Gavi
+
+2000295603 - Marc Bernal
+
+67298375 - Fermín López
+
+67232230 - Dani Olmo
+
+28109605 - Anthony Gordon
+
+2000256231 - Lamine Yamal
+
+19183863 - Raphinha
+
+92080340 - Adeyemi
+
+Atlético Madrid
+13038661 - Jan Oblak
+
+19286221 - Cristian Romero
+
+92079038 - Dávid Hancko
+
+2000049281 - Marc Pubill
+
+67238686 - Robin Le Normand
+
+67211116 - Alejandro Grimaldo
+
+67180490 - Marcos Llorente
+
+92095914 - Morten Hjulmand
+
+67296614 - Pablo Barrios
+
+72056262 - Johnny Cardoso
+
+2000000570 - Kang-in Lee
+
+67238838 - Álex Baena
+
+67283626 - Giuliano Simeone
+
+14183207 - Julián Álvarez
+
+72049033 - Jonathan David
+
+Real Betis
+67156942 - Álvaro Valles
+
+19302213 - Natan
+
+14183188 - Valentín Gómez
+
+67214981 - Fran García
+
+67140801 - Héctor Bellerín
+
+14217112 - Facundo Bernal
+
+67180492 - Marc Roca
+
+67180491 - Pablo Fornals
+
+67067869 - Isco
+
+67239088 - Abde Ezzalzouli
+
+19330959 - Antony
+
+67236531 - Rodrigo Riquelme
+
+28109438 - Troy Parrott
+
+72046422 - Cucho Hernández
+
+Sevilla
+18037140 - Odysseas Vlachodimos
+
+2000218419 - Fran González
+
+2000165617 - Kike Salas
+
+49062287 - Arouna Sangante
+
+67298378 - Andrés Castrín
+
+19080517 - Marcão
+
+75051412 - Gabriel Suazo
+
+67268798 - José Ángel Carmona
+
+67214982 - Juan Iglesias
+
+85172288 - Youssouf Fofana
+
+85183864 - Lucien Agoumé
+
+67211120 - Jon Guridi
+
+92080336 - Rubén Vargas
+
+18129759 - Lucas Stassin
+
+67298380 - Isaac Romero
+
+Alavés
+67175409 - Antonio Sivera
+
+83109315 - Jesús Owono
+
+83120112 - Abdel Abqar
+
+67098485 - Aleksandar Sedlar
+
+85183860 - Moussa Diarra
+
+67180486 - Ander Guevara
+
+67236526 - Antonio Blanco
+
+67211120 - Jon Guridi
+
+67268805 - Carlos Vicente
+
+67180493 - Toni Martínez
+
+67067865 - Kike García
+
+67268808 - Abde Rebbach
+
+NO ENCONTRADO - Ewan Rosales
+
+---
+
+### Osasuna
+
+* `67175422` - Sergio Herrera
+* `67140812` - Aitor Fernández
+* `85185922` - Enzo Boyomo
+* `67214990` - Alejandro Catena
+* `67283636` - Jorge Herrando
+* `67293515` - Abel Bretones
+* `67238696` - Jon Moncayola
+* `67268815` - Aimar Oroz
+* `67211122` - Lucas Torró
+* `78082916` - Ante Budimir
+* `67283638` - Raúl García
+* `67140814` - Rubén García
+
+---
+
+### Celta de Vigo
+
+* `78071822` - Ionuț Radu
+* `67293518` - Javi Rodríguez
+* `92079040` - Carl Starfelt
+* `67268818` - Sergio Carreira
+* `85183866` - Ilaix Moriba
+* `67298382` - Miguel Román
+* `18121685` - Williot Swedberg
+* `67293520` - Hugo Álvarez
+* `67236538` - Ferran Jutglà
+* `2000174402` - Jones El-Abdellaoui
+* `67298385` - Pablo Durán
+* `67035912` - Iago Aspas
+* `WONDERKIDS` - Gonzalo Sanguinetti
+
+---
+
+### RCD Espanyol
+
+* `78065814` - Marko Dmitrović
+* `67293522` - Ángel Fortuño
+* `75038918` - Leandro Cabrera
+* `2000069175` - Clemens Riedel
+* `83120118` - Omar El Hilali
+* `67293508` - Carlos Romero
+* `67283640` - Urko González
+* `67180501` - Edu Expósito
+* `67238698` - Pol Lozano
+* `67238700` - Javi Puado
+* `67298388` - Roberto Fernández
+* `67293525` - Bryan Zaragoza
+
+---
+
+### Racing de Santander
+
+* `67238702` - Julen Agirrezabala
+* `92095920` - Simon Eriksson
+* `85196418` - Jeanuël Belocian
+* `14201885` - Facundo González
+* `67214992` - Manu Hernando
+* `67298390` - Aarón Martín
+* `67268820` - Álvaro Mantilla
+* `2000021281` - Matteo Prati
+* `67140816` - Sergio Canales
+* `67214995` - Iñigo Vicente
+* `67238704` - Andrés Martín
+* `83120120` - Yassir Zabiri
+* `67211125` - Asier Villalibre
+* `WONDERKIDS` - Pippe Mazini
+
+---
+
+### Levante
+
+* `67067862` - Andrés Fernández
+* `67214998` - Joan Femenías
+* `67236540` - Adrián de la Fuente
+* `67175425` - Unai Elgezabal
+* `67211128` - Álex Muñoz
+* `67293528` - Andrés García
+* `67215000` - Oriol Rey
+* `67238706` - Pablo Martínez
+* `67238708` - Roger Brugué
+* `67067867` - José Luis Morales
+* `67293530` - Carlos Álvarez
+* `67268822` - Álex Cantero
+
+---
+
+### Elche
+
+* `67215002` - Miguel San Román
+* `14112382` - Matías Dituro
+* `67098488` - Pedro Bigas
+* `92095922` - David Affengruber
+* `67180503` - Josema
+* `14201888` - Nicolás Castro
+* `67236542` - Álex Collado
+* `67140818` - Óscar Plano
+* `85160880` - Sory Kaba
+* `67298392` - Yago Santiago
+* `83120122` - Adam Boayar
+* `19286224` - André Silva
+
+---
+
+### Valencia
+
+* `78071825` - Stole Dimitrievski
+* `67238702` - Julen Agirrezabala
+* `67293532` - César Tárrega
+* `67236545` - José Copete
+* `67180505` - José Gayà
+* `67283642` - Arnau Martínez
+* `67215005` - Pepelu
+* `67293535` - Javi Guerra
+* `19349892` - André Almeida
+* `67293538` - Diego López
+* `67268825` - Hugo Duro
+* `85172290` - Umar Sadiq
+
+---
+
+### Málaga
+
+* `67180508` - Alfonso Herrero
+* `67298395` - Carlos López
+* `67298398` - Diego Murillo
+* `67215008` - Einar Galilea
+* `67211130` - Fernando Calero
+* `67268828` - José Salinas
+* `2000191507` - Adam Aznou
+* `92080345` - Jens Cajuste
+* `67283645` - Carlos Dotor
+* `67283648` - David Larrubia
+* `67293540` - Juan Cruz
+* `67298400` - Adrián Niño
+* `wonderkid` - Kel Ashford

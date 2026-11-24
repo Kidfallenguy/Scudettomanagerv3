@@ -1,0 +1,5 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <rect width="120" height="120" rx="24" fill="#8b1a2e"/>
+  <circle cx="60" cy="60" r="46" fill="#ffffff" opacity="0.12"/>
+  <text x="60" y="70" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="34" fill="#ffffff">CIT</text>
+</svg>
